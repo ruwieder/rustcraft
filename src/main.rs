@@ -13,6 +13,7 @@ use crate::core::render::renderer::Renderer;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
+// leaked pointer, fuck safety
 static WINDOW: Lazy<Mutex<Option<&'static Window>>> = Lazy::new(|| Mutex::new(None));
 
 #[repr(C)]
@@ -62,7 +63,7 @@ impl ApplicationHandler for VoxelApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.renderer.is_none() {
             let window_attributes = WindowAttributes::default()
-                .with_title("Voxel Game in Rust + wgpu")
+                .with_title("Rustcraft")
                 .with_inner_size(PhysicalSize::new(1280, 720));
             
             // FIXME: absolute shit. leaking the window due to lifetime conflicts
@@ -74,7 +75,15 @@ impl ApplicationHandler for VoxelApp {
             self.renderer = Some(renderer);
         }
     }
-
+    
+    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        // Explicitly drop the renderer to ensure proper cleanup
+        if let Some(renderer) = self.renderer.take() {
+            // Renderer's Drop impl will handle waiting for GPU
+            drop(renderer);
+        }
+    }
+    
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,

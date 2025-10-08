@@ -9,18 +9,18 @@ pub struct Camera {
     pub far: f32,
 }
 
-#[repr(C)]
+#[repr(C, align(16))]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct UniformBuffer {
     pub view_proj: [[f32; 4]; 4],
-    pub camera_pos: [f32; 3],
+    pub camera_pos: [f32; 4], // 4 to keep this 80 bytes long
 }
 
 impl Default for UniformBuffer {
     fn default() -> Self {
         Self {
             view_proj: [[0.0; 4]; 4],
-            camera_pos: [0.0; 3],
+            camera_pos: [0.0; 4],
         }
     }
 }
@@ -59,6 +59,7 @@ impl Camera {
         let view = self.view_matrix();
         let proj = self.proj_matrix();
         uniform.view_proj = (proj * view).into();
-        uniform.camera_pos = self.pos.into();
+        // uniform.camera_pos = self.pos.into();
+        uniform.camera_pos = [self.pos.x, self.pos.y, self.pos.z, 0.0];
     }
 }

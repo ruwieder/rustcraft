@@ -7,5 +7,5 @@ pub mod voxel;
 pub mod chunk;
 use voxel::Voxel;
 use chunk::{Chunk, CHUNK_SIZE};
-use render::vertex::{Vertex, generate_voxel_mesh};
+use render::vertex::Vertex;
 use world::world::World;
