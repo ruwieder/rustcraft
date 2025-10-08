@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use cgmath::Vector3;
-use crate::core::{render::vertex::generate_voxel_mesh, render::vertex::generate_voxel_face, *};
+use crate::core::{render::vertex::generate_voxel_face, *};
 
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>
