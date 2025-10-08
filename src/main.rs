@@ -1,19 +1,19 @@
-use winit::{
-    event::{
-        Event, WindowEvent, WindowEvent::{KeyboardInput}, ElementState, VirtualKeyCode, MouseButton,
-        MouseScrollDelta,
-    },
-    event_loop::{ControlFlow, EventLoop},
-    window::{CursorGrabMode, WindowBuilder},
-};
-use std::time::{Instant, Duration};
+use winit::application::ApplicationHandler;
+use winit::event::{WindowEvent, ElementState, MouseButton};
+use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::window::{CursorGrabMode, Window, WindowAttributes};
+use winit::dpi::PhysicalSize;
+use std::time::Instant;
 use futures::executor::block_on;
 
 mod core;
-use core::*;
+use crate::core::render::renderer::Renderer;
 
-use renderer::{Renderer, Camera};
-use world::World;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+
+static WINDOW: Lazy<Mutex<Option<&'static Window>>> = Lazy::new(|| Mutex::new(None));
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -26,134 +26,123 @@ struct MovementState {
     down: bool,
 }
 
-fn main() {
-    // env_logger::init();
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_title("Voxel Game in Rust + wgpu")
-        .with_inner_size(winit::dpi::PhysicalSize::new(1280, 720))
-        .build(&event_loop)
-        .unwrap();
+struct VoxelApp {
+    renderer: Option<Renderer>,
+    movement: MovementState,
+    last_time: Instant,
+    mouse_locked: bool,
+    last_mouse_pos: (f32, f32),
+    window: Option<Window>,
+}
 
-    let mut renderer = block_on(Renderer::new(&window));
-    let mut movement = MovementState {
-        forward: false,
-        backward: false,
-        left: false,
-        right: false,
-        up: false,
-        down: false,
-    };
-    let mut last_time = Instant::now();
-    let mut mouse_locked = false;
-    let mut last_mouse_pos = (0.0, 0.0);
+impl VoxelApp {
+    fn new() -> Self {
+        Self {
+            renderer: None,
+            movement: MovementState {
+                forward: false,
+                backward: false,
+                left: false,
+                right: false,
+                up: false,
+                down: false,
+            },
+            last_time: Instant::now(),
+            mouse_locked: false,
+            last_mouse_pos: (0.0, 0.0),
+            window: None,
+        }
+    }
+}
 
-    event_loop.run_app((), move |event, control_flow| {
-        *control_flow = ControlFlow::Wait;
+impl ApplicationHandler for VoxelApp {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.window.is_none() {
+            let window_attributes = WindowAttributes::default()
+                .with_title("Voxel Game in Rust + wgpu")
+                .with_inner_size(PhysicalSize::new(1280, 720));
+            
+            // FIXME: absolute shit. leaking the window due to lifetime conflicts
+            let window = event_loop.create_window(window_attributes).unwrap();
+            let window_ref: &'static Window = Box::leak(Box::new(window));
+                *WINDOW.lock().unwrap() = Some(window_ref);
+            let renderer = block_on(Renderer::new(window_ref));
+            
+            self.renderer = Some(renderer);
+        }
+    }
 
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: winit::window::WindowId,
+        event: WindowEvent,
+    ) {
+        let window = self.window.as_ref().expect("Window should be initialized");
+        let renderer = self.renderer.as_mut().expect("Renderer should be initialized");
+        
         match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => {
-                *control_flow = ControlFlow::Exit;
+            WindowEvent::KeyboardInput { event, .. } => {
+                if let PhysicalKey::Code(key_code) = event.physical_key {
+                    match key_code {
+                        KeyCode::Escape => {
+                            event_loop.exit();
+                        }
+                        KeyCode::KeyW => self.movement.forward = event.state == ElementState::Pressed,
+                        KeyCode::KeyS => self.movement.backward = event.state == ElementState::Pressed,
+                        KeyCode::KeyA => self.movement.left = event.state == ElementState::Pressed,
+                        KeyCode::KeyD => self.movement.right = event.state == ElementState::Pressed,
+                        KeyCode::Space => self.movement.up = event.state == ElementState::Pressed,
+                        KeyCode::ShiftLeft => self.movement.down = event.state == ElementState::Pressed,
+                        _ => {}
+                    }
+                }
             }
-            Event::WindowEvent {
-                event: WindowEvent::KeyboardInput {
-                    input: KeyboardInput {
-                        state: ElementState::Pressed,
-                        virtual_keycode: Some(VirtualKeyCode::Escape),
-                        ..
-                    },
-                    ..
-                },
-                ..
-            } => {
-                *control_flow = ControlFlow::Exit;
+            WindowEvent::MouseInput { state, button, .. } => {
+                if button == MouseButton::Left {
+                    if state == ElementState::Pressed {
+                        let _ = window.set_cursor_grab(CursorGrabMode::Locked);
+                        window.set_cursor_visible(false);
+                        self.mouse_locked = true;
+                    } else {
+                        let _ = window.set_cursor_grab(CursorGrabMode::None);
+                        window.set_cursor_visible(true);
+                        self.mouse_locked = false;
+                    }
+                }
             }
-            Event::WindowEvent {
-                event: WindowEvent::Resized(size),
-                ..
-            } => {
-                renderer.resize(size);
-            }
-            Event::WindowEvent {
-                event: WindowEvent::MouseInput {
-                    state: ElementState::Pressed,
-                    button: MouseButton::Left,
-                    ..
-                },
-                ..
-            } => {
-                window.set_cursor_grab(CursorGrabMode::Locked).unwrap();
-                window.set_cursor_visible(false);
-                mouse_locked = true;
-            }
-            Event::WindowEvent {
-                event: WindowEvent::MouseInput {
-                    state: ElementState::Released,
-                    button: MouseButton::Left,
-                    ..
-                },
-                ..
-            } => {
-                window.set_cursor_grab(CursorGrabMode::None).unwrap();
-                window.set_cursor_visible(true);
-                mouse_locked = false;
-            }
-            Event::WindowEvent {
-                event: WindowEvent::CursorMoved { position, .. },
-                ..
-            } => {
-                if mouse_locked {
+            WindowEvent::CursorMoved { position, .. } => {
+                if self.mouse_locked {
                     let delta = (
-                        position.x as f32 - last_mouse_pos.0,
-                        position.y as f32 - last_mouse_pos.1,
+                        position.x as f32 - self.last_mouse_pos.0,
+                        position.y as f32 - self.last_mouse_pos.1,
                     );
                     renderer.update_camera(
-                        0.016, // approx 60 FPS
+                        0.016,
                         (
-                            if movement.right { 1.0 } else { if movement.left { -1.0 } else { 0.0 } },
-                            if movement.forward { 1.0 } else { if movement.backward { -1.0 } else { 0.0 } },
-                            if movement.up { 1.0 } else { if movement.down { -1.0 } else { 0.0 } },
+                            if self.movement.right { 1.0 } else { if self.movement.left { -1.0 } else { 0.0 } },
+                            if self.movement.forward { 1.0 } else { if self.movement.backward { -1.0 } else { 0.0 } },
+                            if self.movement.up { 1.0 } else { if self.movement.down { -1.0 } else { 0.0 } },
                         ),
                         delta,
                     );
-                    last_mouse_pos = (position.x as f32, position.y as f32);
+                    self.last_mouse_pos = (position.x as f32, position.y as f32);
                 }
             }
-            Event::WindowEvent {
-                event: WindowEvent::KeyboardInput {
-                    input: KeyboardInput {
-                        state,
-                        virtual_keycode: Some(key),
-                        ..
-                    },
-                    ..
-                },
-                ..
-            } => {
-                match key {
-                    VirtualKeyCode::W => movement.forward = state == ElementState::Pressed,
-                    VirtualKeyCode::S => movement.backward = state == ElementState::Pressed,
-                    VirtualKeyCode::A => movement.left = state == ElementState::Pressed,
-                    VirtualKeyCode::D => movement.right = state == ElementState::Pressed,
-                    VirtualKeyCode::Space => movement.up = state == ElementState::Pressed,
-                    VirtualKeyCode::Shift => movement.down = state == ElementState::Pressed,
-                    _ => {}
-                }
+            WindowEvent::Resized(size) => {
+                renderer.resize(size);
             }
-            Event::RedrawRequested(_) => {
+            WindowEvent::RedrawRequested => {
                 let now = Instant::now();
-                let delta_time = now.duration_since(last_time).as_secs_f64();
-                last_time = now;
+                let delta_time = now.duration_since(self.last_time).as_secs_f64();
+                self.last_time = now;
 
                 renderer.update_camera(
                     delta_time,
                     (
-                        if movement.right { 1.0 } else { if movement.left { -1.0 } else { 0.0 } },
-                        if movement.forward { 1.0 } else { if movement.backward { -1.0 } else { 0.0 } },
-                        if movement.up { 1.0 } else { if movement.down { -1.0 } else { 0.0 } },
+                        if self.movement.right { 1.0 } else { if self.movement.left { -1.0 } else { 0.0 } },
+                        if self.movement.forward { 1.0 } else { if self.movement.backward { -1.0 } else { 0.0 } },
+                        if self.movement.up { 1.0 } else { if self.movement.down { -1.0 } else { 0.0 } },
                     ),
                     (0.0, 0.0),
                 );
@@ -161,14 +150,25 @@ fn main() {
                 match renderer.render() {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost) => renderer.resize(window.inner_size()),
-                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    Err(wgpu::SurfaceError::OutOfMemory) => {
+                        event_loop.exit();
+                    }
                     Err(e) => eprintln!("{:?}", e),
                 }
             }
-            Event::MainEventsCleared => {
-                window.request_redraw();
-            }
             _ => {}
         }
-    });
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
+    }
+}
+
+fn main() {
+    let event_loop = EventLoop::new().expect("Failed to create event loop");
+    let mut app = VoxelApp::new();
+    event_loop.run_app(&mut app).expect("Event loop failed");
 }
