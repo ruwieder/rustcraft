@@ -1,6 +1,6 @@
 use winit::application::ApplicationHandler;
 use winit::event::{WindowEvent, ElementState, MouseButton};
-use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowAttributes};
 use winit::dpi::PhysicalSize;

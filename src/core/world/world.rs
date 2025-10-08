@@ -81,7 +81,7 @@ impl World {
                         
                         for dir in directions {
                             if self.is_face_exposed(world_pos, dir) {
-                                let (mut v, mut i) = generate_voxel_face(world_pos, color, dir);
+                                let (v, mut i) = generate_voxel_face(world_pos, color, dir);
                                 
                                 for idx in &mut i {
                                     *idx += index_offset as u16;
