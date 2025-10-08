@@ -32,7 +32,6 @@ struct VoxelApp {
     last_time: Instant,
     mouse_locked: bool,
     last_mouse_pos: (f32, f32),
-    window: Option<Window>,
 }
 
 impl VoxelApp {
@@ -50,14 +49,18 @@ impl VoxelApp {
             last_time: Instant::now(),
             mouse_locked: false,
             last_mouse_pos: (0.0, 0.0),
-            window: None,
         }
+    }
+
+    // Helper method to get the window from the static
+    fn get_window(&self) -> &'static Window {
+        *WINDOW.lock().unwrap().as_ref().expect("Window not initialized")
     }
 }
 
 impl ApplicationHandler for VoxelApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
+        if self.renderer.is_none() {
             let window_attributes = WindowAttributes::default()
                 .with_title("Voxel Game in Rust + wgpu")
                 .with_inner_size(PhysicalSize::new(1280, 720));
@@ -65,7 +68,7 @@ impl ApplicationHandler for VoxelApp {
             // FIXME: absolute shit. leaking the window due to lifetime conflicts
             let window = event_loop.create_window(window_attributes).unwrap();
             let window_ref: &'static Window = Box::leak(Box::new(window));
-                *WINDOW.lock().unwrap() = Some(window_ref);
+            *WINDOW.lock().unwrap() = Some(window_ref);
             let renderer = block_on(Renderer::new(window_ref));
             
             self.renderer = Some(renderer);
@@ -78,7 +81,7 @@ impl ApplicationHandler for VoxelApp {
         _window_id: winit::window::WindowId,
         event: WindowEvent,
     ) {
-        let window = self.window.as_ref().expect("Window should be initialized");
+        let window = self.get_window();
         let renderer = self.renderer.as_mut().expect("Renderer should be initialized");
         
         match event {
@@ -161,9 +164,8 @@ impl ApplicationHandler for VoxelApp {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if let Some(window) = &self.window {
-            window.request_redraw();
-        }
+        let window = self.get_window();
+        window.request_redraw();
     }
 }
 
