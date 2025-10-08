@@ -18,6 +18,7 @@ pub struct Renderer {
     pub uniform_bind_group: BindGroup,
     pub camera: Camera,
     depth_texture: Texture,
+    pub world: Box<World>,
 }
 
 impl Renderer {
@@ -165,7 +166,8 @@ impl Renderer {
             cache: None,
         });
         
-        let (vertices, indices) = World::new().build_mesh();
+        let world = World::new();
+        let (vertices, indices) = world.build_mesh();
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertices),
@@ -181,8 +183,8 @@ impl Renderer {
         let index_count = indices.len() as u32;
         
         let camera = Camera::new(
-            Vector3::new(0.0, 10.0, 10.0),
-            Vector3::new(-0.3, 0.8, 0.0),
+            Vector3::new(-30.0, 0.0, 0.0),
+            Vector3::new(1.0, 0.0, 0.0),
             config.width as f32 / config.height as f32,
         );
         
@@ -199,6 +201,7 @@ impl Renderer {
             uniform_bind_group,
             camera,
             depth_texture,
+            world: Box::new(world)
         }
     }
     
@@ -292,6 +295,24 @@ impl Renderer {
         let mut uniform = UniformBuffer::default();
         self.camera.update_uniform(&mut uniform);
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
+    }
+    
+    pub fn update_mesh(&mut self) {
+        let (vertices, indices) = self.world.build_mesh();
+        
+        self.vertex_buffer = self.device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: BufferUsages::VERTEX,
+        });
+        
+        self.index_buffer = self.device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: BufferUsages::INDEX,
+        });
+        
+        self.index_count = indices.len() as u32;
     }
 }
 

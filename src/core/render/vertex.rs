@@ -1,4 +1,4 @@
-use cgmath::Vector3;
+use cgmath::{InnerSpace, Vector3};
 use wgpu::VertexFormat;
 
 #[repr(C)]
@@ -69,4 +69,47 @@ pub fn generate_voxel_mesh(voxel_pos: Vector3<f32>, color: [f32; 3]) -> (Vec<Ver
     // Use same indices (they're relative to the 8 vertices)
     indices.extend_from_slice(CUBE_INDICES);
     (vertices, indices)
+}
+
+pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f32>) -> (Vec<Vertex>, Vec<u16>) {
+    const HALF: f32 = 0.5;
+    
+    let corners = [
+        Vector3::new(-HALF, -HALF, -HALF),
+        Vector3::new(HALF, -HALF, -HALF),
+        Vector3::new(HALF, HALF, -HALF),
+        Vector3::new(-HALF, HALF, -HALF),
+        Vector3::new(-HALF, -HALF, HALF),
+        Vector3::new(HALF, -HALF, HALF),
+        Vector3::new(HALF, HALF, HALF),
+        Vector3::new(-HALF, HALF, HALF),
+    ];
+    
+    let faces = [
+        ([0, 1, 2, 3], Vector3::new(0.0, 0.0, -1.0)), // back
+        ([5, 4, 7, 6], Vector3::new(0.0, 0.0, 1.0)),  // front
+        ([4, 0, 3, 7], Vector3::new(-1.0, 0.0, 0.0)), // left
+        ([1, 5, 6, 2], Vector3::new(1.0, 0.0, 0.0)),  // right
+        ([3, 2, 6, 7], Vector3::new(0.0, 1.0, 0.0)),  // top
+        ([4, 5, 1, 0], Vector3::new(0.0, -1.0, 0.0)), // bottom
+    ];
+    
+    for (face_indices, face_normal) in faces {
+        if (face_normal - normal).magnitude() < 0.001 {
+            let mut vertices = Vec::new();
+            let indices = vec![0, 1, 2, 2, 3, 0];
+            
+            for &idx in &face_indices {
+                let corner = corners[idx];
+                vertices.push(Vertex {
+                    pos: [pos.x + corner.x, pos.y + corner.y, pos.z + corner.z],
+                    color,
+                });
+            }
+            
+            return (vertices, indices);
+        }
+    }
+    
+    (Vec::new(), Vec::new())
 }
