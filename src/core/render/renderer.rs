@@ -183,8 +183,8 @@ impl Renderer {
         let index_count = indices.len() as u32;
         
         let camera = Camera::new(
-            Vector3::new(0.0, 50.0, 0.0),
-            Vector3::new(0.0, -1.0, 0.0),
+            Vector3::new(-3.18, 5.15, 6.62),
+            Vector3::new(-0.227, 2.016, 0.0),
             config.width as f32 / config.height as f32,
         );
         
@@ -275,23 +275,32 @@ impl Renderer {
     }
     
     pub fn update_camera(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
-        let speed = 0.1 * dt as f32;
-        let rot_speed = 0.2 * dt as f32;
-        let forward = Vector3::new(
-            self.camera.rot.y.sin() * self.camera.rot.x.cos(),
-            self.camera.rot.x.sin(),
-            -self.camera.rot.y.cos() * self.camera.rot.x.cos(),
-        ).normalize();
-        let right = forward.cross(Vector3::unit_y()).normalize();
+        let speed = 5.0 * dt as f32;
+        let rot_speed = 0.005 * dt as f32;
         
-        self.camera.pos += forward * movement.0 * speed;
-        self.camera.pos += right * movement.1 * speed;
-        self.camera.pos.y += movement.2 * speed;
-        
-        self.camera.rot.x += mouse_delta.1 * rot_speed;
-        self.camera.rot.y += mouse_delta.0 * rot_speed;
+        self.camera.rot.y += mouse_delta.0 * rot_speed; // Yaw (left-right)
+        self.camera.rot.x += mouse_delta.1 * rot_speed; // Pitch (up-down)
         
         self.camera.rot.x = self.camera.rot.x.clamp(-1.5, 1.5);
+        
+        let forward = Vector3::new(
+            self.camera.rot.y.cos() * self.camera.rot.x.cos(),
+            self.camera.rot.x.sin(),
+            self.camera.rot.y.sin() * self.camera.rot.x.cos(),
+        ).normalize();
+        
+        let right = Vector3::new(
+            -self.camera.rot.y.sin(), 
+            0.0, 
+            self.camera.rot.y.cos()
+        ).normalize();
+        
+        let up = right.cross(forward).normalize();
+        
+        self.camera.pos += forward * movement.0 * speed; // Forward/backward
+        self.camera.pos += right * movement.1 * speed;   // Left/right
+        self.camera.pos += up * movement.2 * speed;      // Up/down
+        
         let mut uniform = UniformBuffer::default();
         self.camera.update_uniform(&mut uniform);
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));

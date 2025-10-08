@@ -12,7 +12,7 @@ use crate::WINDOW_PTR;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-struct MovementState {
+pub struct MovementState {
     forward: bool,
     backward: bool,
     left: bool,
@@ -22,11 +22,11 @@ struct MovementState {
 }
 
 pub struct App {
-    renderer: Option<Renderer>,
-    movement: MovementState,
-    last_time: Instant,
-    mouse_locked: bool,
-    last_mouse_pos: (f32, f32),
+    pub renderer: Option<Renderer>,
+    pub movement: MovementState,
+    pub last_time: Instant,
+    pub mouse_locked: bool,
+    pub last_mouse_pos: (f32, f32),
 }
 
 impl App {
@@ -43,7 +43,7 @@ impl App {
             },
             last_time: Instant::now(),
             mouse_locked: false,
-            last_mouse_pos: (0.0, 0.0),
+            last_mouse_pos: (f32::NAN, f32::NAN),
         }
     }
 
@@ -114,11 +114,15 @@ impl ApplicationHandler for App {
                         let _ = window.set_cursor_grab(CursorGrabMode::None);
                         window.set_cursor_visible(true);
                         self.mouse_locked = false;
+                        self.last_mouse_pos = (f32::NAN, f32::NAN);
                     }
                 }
             }
             WindowEvent::CursorMoved { position, .. } => {
                 if self.mouse_locked {
+                    if self.last_mouse_pos.1.is_nan() {
+                        self.last_mouse_pos = (position.x as f32, position.y as f32);
+                    };
                     let delta = (
                         position.x as f32 - self.last_mouse_pos.0,
                         position.y as f32 - self.last_mouse_pos.1,

@@ -2,6 +2,7 @@ mod core;
 mod app;
 
 use app::App;
+use cgmath::Vector3;
 
 use std::sync::Mutex;
 use once_cell::sync::Lazy;

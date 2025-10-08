@@ -11,8 +11,8 @@ impl World {
         let mut world = Self{
             chunks: HashMap::new(),
         };
-        for x in -1..=1 {
-            for z in -1..=1 {
+        for x in 0..=0 {
+            for z in 0..=0 {
                 world.load_chunks(x, 0, z);
             }
         }
@@ -23,7 +23,7 @@ impl World {
         let key = (x, y, z);
         if !self.chunks.contains_key(&key) {
             self.chunks.insert(key, 
-                Chunk::new_fill(Vector3::new(x, y, z), (250, 100, 100))
+                Chunk::new_flat(Vector3::new(x, y, z), (250, 100, 100))
             );
         };
     }

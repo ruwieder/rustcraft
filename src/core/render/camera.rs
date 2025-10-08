@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, Matrix4, Point3, Vector3, Deg};
+use cgmath::{InnerSpace, Matrix4, Point3, Vector3, Deg, PerspectiveFov};
 
 pub struct Camera {
     pub pos: Vector3<f32>,
@@ -53,13 +53,19 @@ impl Camera {
     }
     
     pub fn proj_matrix(&self) -> Matrix4<f32> {
-        cgmath::perspective(Deg(self.fov), self.aspect, self.near, self.far)
+        let perspective = PerspectiveFov {
+                fovy: Deg(self.fov).into(),
+                aspect: self.aspect,
+                near: 0.1,
+                far: 1000.0,
+            };
+            Matrix4::from(perspective)
     }
     pub fn update_uniform(&self, uniform: &mut UniformBuffer) {
         let view = self.view_matrix();
         let proj = self.proj_matrix();
         uniform.view_proj = (proj * view).into();
         // uniform.camera_pos = self.pos.into();
-        uniform.camera_pos = [self.pos.x, self.pos.y, self.pos.z, 0.0];
+        uniform.camera_pos = [self.pos.x, self.pos.y, self.pos.z, 1.0];
     }
 }
