@@ -276,7 +276,7 @@ impl Renderer {
     
     pub fn update_camera(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
         let speed = 5.0 * dt as f32;
-        let rot_speed = 0.005 * dt as f32;
+        let rot_speed = 0.008 * dt as f32;
         
         self.camera.rot.y += mouse_delta.0 * rot_speed; // Yaw (left-right)
         self.camera.rot.x += mouse_delta.1 * rot_speed; // Pitch (up-down)

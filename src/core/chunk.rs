@@ -20,7 +20,7 @@ impl Chunk {
     pub fn new_flat(pos: Vector3<i64>, color: (u8, u8, u8)) -> Self {
         let mut voxels = [Voxel::new((0, 0, 0)); CHUNK_VOLUME];
         for i in 0..(CHUNK_SIZE * CHUNK_SIZE) {
-            voxels[i].color = color;
+            voxels[i].color = (color.0 * (i%2) as u8, color.1 * ((i+1) % 2) as u8, color.2);
         }
         Chunk { voxels, _pos: pos }
     }

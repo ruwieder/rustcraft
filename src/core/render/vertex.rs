@@ -5,12 +5,13 @@ use wgpu::VertexFormat;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub pos: [f32; 3],
-    pub color: [f32; 3],
+    pub color: [f32; 3],    // keep for now for fallback
+    pub tex_coord: [f32; 2],
 }
 
 impl Vertex {
-    pub const fn new(pos: [f32; 3], color: [f32; 3]) -> Self {
-        Self { pos, color }
+    pub const fn new(pos: [f32; 3], tex_coord: [f32; 2]) -> Self {
+        Self { pos, tex_coord, color: [1.0, 0.0, 1.0]}
     }
     
     pub const fn desc() -> wgpu::VertexBufferLayout<'static> {
@@ -18,6 +19,7 @@ impl Vertex {
             array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
+                // Position
                 wgpu::VertexAttribute {
                     offset: 0,
                     shader_location: 0,
@@ -26,6 +28,11 @@ impl Vertex {
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
+                    format: VertexFormat::Float32x2
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                    shader_location: 1,
                     format: VertexFormat::Float32x3,
                 },
             ]
@@ -33,15 +40,15 @@ impl Vertex {
     }
 }
 
-const CUBE_VERTICES: &[Vertex] = &[
-    Vertex::new([-0.5, -0.5, -0.5], [1.0, 1.0, 1.0]),
-    Vertex::new([0.5, -0.5, -0.5], [1.0, 1.0, 1.0]),
-    Vertex::new([0.5, -0.5, 0.5], [1.0, 1.0, 1.0]),
-    Vertex::new([-0.5, -0.5, 0.5], [1.0, 1.0, 1.0]),
-    Vertex::new([-0.5, 0.5, -0.5], [1.0, 1.0, 1.0]),
-    Vertex::new([0.5, 0.5, -0.5], [1.0, 1.0, 1.0]),
-    Vertex::new([0.5, 0.5, 0.5], [1.0, 1.0, 1.0]),
-    Vertex::new([-0.5, 0.5, 0.5], [1.0, 1.0, 1.0]),
+const CUBE_VERTICES: &[Vertex] = &[ // FIXME: tex_coord
+    Vertex::new([-0.5, -0.5, -0.5], [1.0, 1.0]),
+    Vertex::new([0.5, -0.5, -0.5], [1.0, 1.0]),
+    Vertex::new([0.5, -0.5, 0.5], [1.0, 1.0]),
+    Vertex::new([-0.5, -0.5, 0.5], [1.0, 1.0]),
+    Vertex::new([-0.5, 0.5, -0.5], [1.0, 1.0]),
+    Vertex::new([0.5, 0.5, -0.5], [1.0, 1.0]),
+    Vertex::new([0.5, 0.5, 0.5], [1.0, 1.0]),
+    Vertex::new([-0.5, 0.5, 0.5], [1.0, 1.0]),
 ];
 
 const CUBE_INDICES: &[u16] = &[
@@ -53,7 +60,7 @@ const CUBE_INDICES: &[u16] = &[
     1, 5, 6, 1, 6, 2, // Right
 ];
 
-pub fn generate_voxel_mesh(voxel_pos: Vector3<f32>, color: [f32; 3]) -> (Vec<Vertex>, Vec<u16>) {
+pub fn generate_voxel_mesh(voxel_pos: Vector3<f32>, tex_coord: [f32; 2]) -> (Vec<Vertex>, Vec<u16>) {
     let mut vertices = Vec::with_capacity(CUBE_VERTICES.len());
     let mut indices = Vec::with_capacity(CUBE_INDICES.len());
     // let indices = CUBE_INDICES.clone();
@@ -64,14 +71,14 @@ pub fn generate_voxel_mesh(voxel_pos: Vector3<f32>, color: [f32; 3]) -> (Vec<Ver
             v.pos[1] + voxel_pos.y,
             v.pos[2] + voxel_pos.z,
         ];
-        vertices.push(Vertex::new(pos, color));
+        vertices.push(Vertex::new(pos, tex_coord));
     }
     // Use same indices (they're relative to the 8 vertices)
     indices.extend_from_slice(CUBE_INDICES);
     (vertices, indices)
 }
 
-pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f32>) -> (Vec<Vertex>, Vec<u16>) {
+pub fn generate_voxel_face(pos: Vector3<f32>, tex_coord: [f32; 2], normal: Vector3<f32>) -> (Vec<Vertex>, Vec<u16>) {
     const HALF: f32 = 0.5;
     
     let corners = [
@@ -101,10 +108,9 @@ pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f
             
             for &idx in &face_indices {
                 let corner = corners[idx];
-                vertices.push(Vertex {
-                    pos: [pos.x + corner.x, pos.y + corner.y, pos.z + corner.z],
-                    color,
-                });
+                vertices.push(
+                    Vertex::new([pos.x + corner.x, pos.y + corner.y, pos.z + corner.z], tex_coord)
+                );
             }
             
             return (vertices, indices);

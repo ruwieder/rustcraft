@@ -23,7 +23,7 @@ impl World {
         let key = (x, y, z);
         if !self.chunks.contains_key(&key) {
             self.chunks.insert(key, 
-                Chunk::new_flat(Vector3::new(x, y, z), (250, 100, 100))
+                Chunk::new_flat(Vector3::new(x, y, z), (250, 150, 100))
             );
         };
     }
@@ -58,12 +58,11 @@ impl World {
                         if voxel.color == (0, 0, 0) { 
                             continue; 
                         }
-                        let color = [
-                            voxel.color.0 as f32 / 255.0,
-                            voxel.color.1 as f32 / 255.0,
-                            voxel.color.2 as f32 / 255.0,
-                        ];
-                        
+                        // let color = [
+                        //     voxel.color.0 as f32 / 255.0,
+                        //     voxel.color.1 as f32 / 255.0,
+                        //     voxel.color.2 as f32 / 255.0,
+                        // ];
                         let world_pos = Vector3::new(
                             (chunk_pos.0 * CHUNK_SIZE as i64 + x as i64) as f32,
                             (chunk_pos.1 * CHUNK_SIZE as i64 + y as i64) as f32, 
@@ -81,7 +80,7 @@ impl World {
                         
                         for dir in directions {
                             if self.is_face_exposed(world_pos, dir) {
-                                let (v, mut i) = generate_voxel_face(world_pos, color, dir);
+                                let (v, mut i) = generate_voxel_face(world_pos, [1.0, 1.0], dir); //FIXME
                                 
                                 for idx in &mut i {
                                     *idx += index_offset as u16;
