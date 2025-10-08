@@ -183,8 +183,8 @@ impl Renderer {
         let index_count = indices.len() as u32;
         
         let camera = Camera::new(
-            Vector3::new(-30.0, 0.0, 0.0),
-            Vector3::new(1.0, 0.0, 0.0),
+            Vector3::new(0.0, 50.0, 0.0),
+            Vector3::new(0.0, -1.0, 0.0),
             config.width as f32 / config.height as f32,
         );
         
@@ -275,8 +275,8 @@ impl Renderer {
     }
     
     pub fn update_camera(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
-        let speed = 5.0 * dt as f32;
-        let rot_speed = 0.005;
+        let speed = 0.1 * dt as f32;
+        let rot_speed = 0.2 * dt as f32;
         let forward = Vector3::new(
             self.camera.rot.y.sin() * self.camera.rot.x.cos(),
             self.camera.rot.x.sin(),

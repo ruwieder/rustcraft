@@ -108,6 +108,8 @@ impl ApplicationHandler for VoxelApp {
                         KeyCode::ShiftLeft => self.movement.down = event.state == ElementState::Pressed,
                         _ => {}
                     }
+                    println!("pos: {:?}", renderer.camera.pos);
+                    println!("rot: {:?}", renderer.camera.rot);
                 }
             }
             WindowEvent::MouseInput { state, button, .. } => {
