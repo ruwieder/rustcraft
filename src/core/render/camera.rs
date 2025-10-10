@@ -30,7 +30,7 @@ impl Camera {
         Self {
             pos,
             rot,
-            fov: 90f32.to_radians(),
+            fov: 90.0,
             aspect,
             near: 0.1,
             far: 1000.0

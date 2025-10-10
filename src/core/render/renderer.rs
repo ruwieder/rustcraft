@@ -225,12 +225,10 @@ impl Renderer {
         let index_count = indices.len() as u32;
         
         let camera = Camera::new(
-            Vector3::new(-3.18, 5.15, 6.62),
-            Vector3::new(-0.227, 2.016, 0.0),
+            Vector3::new(-35.66, 6.776, -8.67),
+            Vector3::new(-0.139, 2.016, 0.0),
             config.width as f32 / config.height as f32,
         );
-        
-        
         
         Self {
             device,
@@ -322,8 +320,8 @@ impl Renderer {
     }
     
     pub fn update_camera(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
-        let speed = 5.0 * dt as f32;
-        let rot_speed = 0.008 * dt as f32;
+        let speed = 8.0 * dt as f32;
+        let rot_speed = 0.15 * dt as f32;
         
         self.camera.rot.y += mouse_delta.0 * rot_speed; // Yaw (left-right)
         self.camera.rot.x += mouse_delta.1 * rot_speed; // Pitch (up-down)

@@ -6,10 +6,10 @@ struct UniformBuffer {
 @group(0) @binding(0)
 var<uniform> uniforms: UniformBuffer;
 
-@group(0) @binding(1)
+@group(1) @binding(0)
 var texture_atlas: texture_2d<f32>;
 
-@group(0) @binding(2)
+@group(1) @binding(1)
 var texture_sampler: sampler;
 
 struct VertexInput {
@@ -35,7 +35,8 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Mix texture with vertex color for now
     let texture_color = textureSample(texture_atlas, texture_sampler, in.tex_coords);
-    return texture_color * vec4<f32>(in.color, 1.0);
+    // return texture_color * vec4<f32>(in.color, 1.0);
+    // return vec4<f32>(in.color, 1.0);
+    return texture_color;
 }

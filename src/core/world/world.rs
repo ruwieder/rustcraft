@@ -3,7 +3,7 @@ use cgmath::Vector3;
 use crate::core::{render::vertex::generate_voxel_face, *};
 
 const DEFAULT_COLOR: (u8, u8, u8) = (255, 100, 100);
-const DEFAULT_TEX_ID: u16 = 5;
+const DEFAULT_TEX_ID: u16 = 120;
 
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>
@@ -14,8 +14,8 @@ impl World {
         let mut world = Self{
             chunks: HashMap::new(),
         };
-        for x in 0..=0 {
-            for z in 0..=0 {
+        for x in -1..=1 {
+            for z in -1..=1 {
                 world.load_chunks(x, 0, z);
             }
         }

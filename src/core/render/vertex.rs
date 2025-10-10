@@ -40,7 +40,7 @@ impl Vertex {
     }
 }
 
-const CUBE_VERTICES: &[Vertex] = &[ // FIXME: tex_coord
+const CUBE_VERTICES: &[Vertex] = &[ // Note: tex_coords is not used
     Vertex::new([-0.5, -0.5, -0.5], [1.0, 1.0]),
     Vertex::new([0.5, -0.5, -0.5], [1.0, 1.0]),
     Vertex::new([0.5, -0.5, 0.5], [1.0, 1.0]),
