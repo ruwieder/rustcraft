@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, Vector3};
+use cgmath::{InnerSpace, Vector3, Zero};
 use wgpu::VertexFormat;
 
 #[repr(C)]
@@ -78,44 +78,89 @@ pub fn generate_voxel_mesh(voxel_pos: Vector3<f32>, tex_coord: [f32; 2]) -> (Vec
     (vertices, indices)
 }
 
-pub fn generate_voxel_face(pos: Vector3<f32>, tex_coord: [f32; 2], normal: Vector3<f32>) -> (Vec<Vertex>, Vec<u16>) {
-    const HALF: f32 = 0.5;
+pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f32>, texture_id: u16) -> (Vec<Vertex>, Vec<u16>) {
+    let half = 0.5;
+    let texture_atlas_size = 32.0; // atlas as 32x32 textures
+    let tex_size = 1.0 / texture_atlas_size;
     
-    let corners = [
-        Vector3::new(-HALF, -HALF, -HALF),
-        Vector3::new(HALF, -HALF, -HALF),
-        Vector3::new(HALF, HALF, -HALF),
-        Vector3::new(-HALF, HALF, -HALF),
-        Vector3::new(-HALF, -HALF, HALF),
-        Vector3::new(HALF, -HALF, HALF),
-        Vector3::new(HALF, HALF, HALF),
-        Vector3::new(-HALF, HALF, HALF),
+    let tex_x = (texture_id % texture_atlas_size as u16) as f32 * tex_size;
+    let tex_y = (texture_id / texture_atlas_size as u16) as f32 * tex_size;
+    
+    let uvs = [
+        [tex_x, tex_y],
+        [tex_x + tex_size, tex_y],
+        [tex_x + tex_size, tex_y + tex_size],
+        [tex_x, tex_y + tex_size],
     ];
     
-    let faces = [
-        ([0, 1, 2, 3], Vector3::new(0.0, 0.0, -1.0)), // back
-        ([5, 4, 7, 6], Vector3::new(0.0, 0.0, 1.0)),  // front
-        ([4, 0, 3, 7], Vector3::new(-1.0, 0.0, 0.0)), // left
-        ([1, 5, 6, 2], Vector3::new(1.0, 0.0, 0.0)),  // right
-        ([3, 2, 6, 7], Vector3::new(0.0, 1.0, 0.0)),  // top
-        ([4, 5, 1, 0], Vector3::new(0.0, -1.0, 0.0)), // bottom
-    ];
+    let faces = match normal {
+        Vector3 { x: -1.0, y: 0.0, z: 0.0 } => ( // Left
+            [
+                Vector3::new(-half, -half, -half),
+                Vector3::new(-half, -half, half),
+                Vector3::new(-half, half, half),
+                Vector3::new(-half, half, -half),
+            ],
+            [0, 1, 2, 2, 3, 0]
+        ),
+        Vector3 { x: 1.0, y: 0.0, z: 0.0 } => ( // Right
+            [
+                Vector3::new(half, -half, half),
+                Vector3::new(half, -half, -half),
+                Vector3::new(half, half, -half),
+                Vector3::new(half, half, half),
+            ],
+            [0, 1, 2, 2, 3, 0]
+        ),
+        Vector3 { x: 0.0, y: -1.0, z: 0.0 } => ( // Bottom
+            [
+                Vector3::new(-half, -half, -half),
+                Vector3::new(half, -half, -half),
+                Vector3::new(half, -half, half),
+                Vector3::new(-half, -half, half),
+            ],
+            [0, 1, 2, 2, 3, 0]
+        ),
+        Vector3 { x: 0.0, y: 1.0, z: 0.0 } => ( // Top
+            [
+                Vector3::new(-half, half, half),
+                Vector3::new(half, half, half),
+                Vector3::new(half, half, -half),
+                Vector3::new(-half, half, -half),
+            ],
+            [0, 1, 2, 2, 3, 0]
+        ),
+        Vector3 { x: 0.0, y: 0.0, z: -1.0 } => ( // Back
+            [
+                Vector3::new(half, -half, -half),
+                Vector3::new(-half, -half, -half),
+                Vector3::new(-half, half, -half),
+                Vector3::new(half, half, -half),
+            ],
+            [0, 1, 2, 2, 3, 0]
+        ),
+        Vector3 { x: 0.0, y: 0.0, z: 1.0 } => ( // Front
+            [
+                Vector3::new(-half, -half, half),
+                Vector3::new(half, -half, half),
+                Vector3::new(half, half, half),
+                Vector3::new(-half, half, half),
+            ],
+            [0, 1, 2, 2, 3, 0]
+        ),
+        _ => ( [Vector3::zero(); 4], [0, 0, 0, 0, 0, 0] )
+    };
     
-    for (face_indices, face_normal) in faces {
-        if (face_normal - normal).magnitude() < 0.001 {
-            let mut vertices = Vec::new();
-            let indices = vec![0, 1, 2, 2, 3, 0];
-            
-            for &idx in &face_indices {
-                let corner = corners[idx];
-                vertices.push(
-                    Vertex::new([pos.x + corner.x, pos.y + corner.y, pos.z + corner.z], tex_coord)
-                );
-            }
-            
-            return (vertices, indices);
-        }
+    let (positions, indices) = faces;
+    let mut vertices = Vec::new();
+    
+    for (i, &position) in positions.iter().enumerate() {
+        vertices.push(Vertex {
+            pos: [pos.x + position.x, pos.y + position.y, pos.z + position.z],
+            tex_coord: uvs[i],
+            color,
+        });
     }
     
-    (Vec::new(), Vec::new())
+    (vertices, indices.to_vec())
 }

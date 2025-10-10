@@ -12,15 +12,16 @@ pub struct Chunk {
 
 #[allow(dead_code)]
 impl Chunk {
-    pub fn new_fill(pos: Vector3<i64>, color: (u8, u8, u8)) -> Self {
-        let voxels = [Voxel::new(color); CHUNK_VOLUME];
+    pub fn new_empty(pos: Vector3<i64>) -> Self {
+        let voxels = [Voxel::air(); CHUNK_VOLUME];
         Chunk { voxels, _pos: pos }
     }
     
-    pub fn new_flat(pos: Vector3<i64>, color: (u8, u8, u8)) -> Self {
-        let mut voxels = [Voxel::new((0, 0, 0)); CHUNK_VOLUME];
+    pub fn new_flat(pos: Vector3<i64>, color: (u8, u8, u8), tex_id: u16) -> Self {
+        let mut voxels = [Voxel::air(); CHUNK_VOLUME];
         for i in 0..(CHUNK_SIZE * CHUNK_SIZE) {
             voxels[i].color = (color.0 * (i%2) as u8, color.1 * ((i+1) % 2) as u8, color.2);
+            voxels[i].tex_id = tex_id;
         }
         Chunk { voxels, _pos: pos }
     }

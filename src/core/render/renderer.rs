@@ -1,7 +1,7 @@
 use wgpu::*;
 use wgpu::util::DeviceExt;
 use cgmath::{InnerSpace, Vector3};
-use crate::core::render::camera::{Camera, UniformBuffer};
+use crate::core::render::{texture, camera::{Camera, UniformBuffer}};
 use crate::core::World;
 use crate::core::Vertex;
 
@@ -19,6 +19,8 @@ pub struct Renderer {
     pub camera: Camera,
     depth_texture: Texture,
     pub world: Box<World>,
+    pub texture_bind_group: wgpu::BindGroup,
+    pub texture: texture::Texture,
 }
 
 impl Renderer {
@@ -120,9 +122,49 @@ impl Renderer {
             source: ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
         
+        let diffuse_bytes = include_bytes!("../../../assets/textures/minecraft_block_atlas.png");
+        let texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "atlas.png").unwrap();
+            
+        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+            label: Some("texture_bind_group_layout"),
+        });
+        
+        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&texture.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&texture.sampler),
+                },
+            ],
+            label: Some("diffuse_bind_group"),
+        });
+        
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&uniform_bind_group_layout],
+            bind_group_layouts: &[&uniform_bind_group_layout, &texture_bind_group_layout],
             push_constant_ranges: &[],
         });
         
@@ -188,6 +230,8 @@ impl Renderer {
             config.width as f32 / config.height as f32,
         );
         
+        
+        
         Self {
             device,
             queue,
@@ -201,7 +245,9 @@ impl Renderer {
             uniform_bind_group,
             camera,
             depth_texture,
-            world: Box::new(world)
+            world: Box::new(world),
+            texture_bind_group,
+            texture
         }
     }
     
@@ -263,6 +309,7 @@ impl Renderer {
             
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.index_count, 0, 0..1);

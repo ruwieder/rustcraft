@@ -2,6 +2,9 @@ use std::collections::HashMap;
 use cgmath::Vector3;
 use crate::core::{render::vertex::generate_voxel_face, *};
 
+const DEFAULT_COLOR: (u8, u8, u8) = (255, 100, 100);
+const DEFAULT_TEX_ID: u16 = 5;
+
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>
 }
@@ -23,7 +26,7 @@ impl World {
         let key = (x, y, z);
         if !self.chunks.contains_key(&key) {
             self.chunks.insert(key, 
-                Chunk::new_flat(Vector3::new(x, y, z), (250, 150, 100))
+                Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_TEX_ID)
             );
         };
     }
@@ -58,11 +61,12 @@ impl World {
                         if voxel.color == (0, 0, 0) { 
                             continue; 
                         }
-                        // let color = [
-                        //     voxel.color.0 as f32 / 255.0,
-                        //     voxel.color.1 as f32 / 255.0,
-                        //     voxel.color.2 as f32 / 255.0,
-                        // ];
+                        let color = [
+                            voxel.color.0 as f32 / 255.0,
+                            voxel.color.1 as f32 / 255.0,
+                            voxel.color.2 as f32 / 255.0,
+                        ];
+                        
                         let world_pos = Vector3::new(
                             (chunk_pos.0 * CHUNK_SIZE as i64 + x as i64) as f32,
                             (chunk_pos.1 * CHUNK_SIZE as i64 + y as i64) as f32, 
@@ -80,7 +84,9 @@ impl World {
                         
                         for dir in directions {
                             if self.is_face_exposed(world_pos, dir) {
-                                let (v, mut i) = generate_voxel_face(world_pos, [1.0, 1.0], dir); //FIXME
+                                let (v, mut i) = generate_voxel_face(
+                                    world_pos, color, dir, voxel.tex_id
+                                ); //FIXME
                                 
                                 for idx in &mut i {
                                     *idx += index_offset as u16;
