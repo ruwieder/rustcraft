@@ -2,10 +2,10 @@ pub const CHUNK_SIZE: usize = 16;
 pub const CHUNK_VOLUME: usize = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 use cgmath::Vector3;
 
-use crate::core::Voxel;
+use crate::core::Block;
 
 pub struct Chunk {
-    pub voxels: [Voxel; CHUNK_VOLUME],
+    pub voxels: [Block; CHUNK_VOLUME],
     pub _pos: Vector3<i64>,
     // pub is_empty: bool
 }
@@ -13,12 +13,12 @@ pub struct Chunk {
 #[allow(dead_code)]
 impl Chunk {
     pub fn new_empty(pos: Vector3<i64>) -> Self {
-        let voxels = [Voxel::air(); CHUNK_VOLUME];
+        let voxels = [Block::air(); CHUNK_VOLUME];
         Chunk { voxels, _pos: pos }
     }
     
     pub fn new_flat(pos: Vector3<i64>, color: (u8, u8, u8), tex_id: u16) -> Self {
-        let mut voxels = [Voxel::air(); CHUNK_VOLUME];
+        let mut voxels = [Block::air(); CHUNK_VOLUME];
         for i in 0..(CHUNK_SIZE * CHUNK_SIZE) {
             voxels[i].color = (color.0 * (i%2) as u8, color.1 * ((i+1) % 2) as u8, color.2);
             voxels[i].tex_id = tex_id;
@@ -31,7 +31,7 @@ impl Chunk {
         y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x
     }
     
-    pub fn try_get(&self, x: usize, y: usize, z: usize) -> Option<Voxel> {
+    pub fn try_get(&self, x: usize, y: usize, z: usize) -> Option<Block> {
         if x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE {
             Some(self.voxels[Self::index(x, y, z)])
         } else { None }

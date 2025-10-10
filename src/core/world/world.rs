@@ -31,7 +31,7 @@ impl World {
         };
     }
     
-    pub fn get_voxel(&self, world_pos: Vector3<i64>) -> Option<Voxel> {
+    pub fn get_voxel(&self, world_pos: Vector3<i64>) -> Option<Block> {
         let chunk_x = world_pos.x / CHUNK_SIZE as i64;
         let chunk_y = world_pos.y / CHUNK_SIZE as i64;
         let chunk_z = world_pos.z / CHUNK_SIZE as i64;

@@ -1,12 +1,12 @@
 type Color = (u8, u8, u8);
-
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
-pub struct Voxel {
+pub struct Block {
     pub color: Color,
     pub tex_id: u16,
 }
 
-impl Voxel {
+impl Block {
     pub fn new(color: Color, tex_id: u16) -> Self {
         Self{ color, tex_id }
     }

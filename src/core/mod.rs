@@ -3,9 +3,9 @@
 
 pub mod render;
 pub mod world;
-pub mod voxel;
+pub mod block;
 pub mod chunk;
-use voxel::Voxel;
+use block::Block;
 use chunk::{Chunk, CHUNK_SIZE};
 use render::vertex::Vertex;
 use world::world::World;
