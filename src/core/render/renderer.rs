@@ -227,7 +227,7 @@ impl Renderer {
         let index_count = indices.len() as u32;
         
         let camera = Camera::new(
-            Vector3::new(0.0, 0.0, 10.0),
+            Vector3::new(0.0, 0.0, 4.0),
             Vector2::new(0.0, 0.0),
             config.width as f32 / config.height as f32,
         );

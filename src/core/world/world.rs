@@ -21,10 +21,10 @@ impl World {
         //     }
         // }
         world.load_chunks(0, 0, 0);
-        // world.load_chunks(-1, -1, 0);
-        // world.load_chunks(1, -1, 0);
-        // world.load_chunks(-1, 1, 0);
-        // world.load_chunks(1, 1, 0);
+        world.load_chunks(-1, -1, 0);
+        world.load_chunks(1, -1, 0);
+        world.load_chunks(-1, 1, 0);
+        world.load_chunks(1, 1, 0);
         world
     }
     
@@ -39,9 +39,9 @@ impl World {
     
     pub fn get_chunk(&self, world_pos: &Vector3<i64>) -> Option<&Chunk> {
         let chunk_idx = (
-            world_pos.x / CHUNK_SIZE as i64,
-            world_pos.y / CHUNK_SIZE as i64,
-            world_pos.z / CHUNK_SIZE as i64,
+            world_pos.x.div_euclid(CHUNK_SIZE as i64),
+            world_pos.y.div_euclid(CHUNK_SIZE as i64),
+            world_pos.z.div_euclid(CHUNK_SIZE as i64),
         );
         self.chunks.get(&chunk_idx)
     }
