@@ -1,21 +1,21 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 use cgmath::Vector3;
 use crate::core::{render::vertex::generate_voxel_face, *};
 
 const DEFAULT_COLOR: (u8, u8, u8) = (255, 100, 100);
-const DEFAULT_TEX_ID: u16 = 120;
+const DEFAULT_TEX_ID: u16 = 25;
 
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>
 }
 
 impl World {
-    pub fn new() -> Self {
+    pub fn new(range_x: Range<i64>, range_z: Range<i64>) -> Self {
         let mut world = Self{
             chunks: HashMap::new(),
         };
-        for x in -1..=1 {
-            for z in -1..=1 {
+        for x in -3..=3 {
+            for z in -2..=2 {
                 world.load_chunks(x, 0, z);
             }
         }
@@ -27,22 +27,25 @@ impl World {
         if !self.chunks.contains_key(&key) {
             self.chunks.insert(key, 
                 Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_TEX_ID)
+                // Chunk::new_fill(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_TEX_ID)
             );
         };
     }
     
-    pub fn get_voxel(&self, world_pos: Vector3<i64>) -> Option<Block> {
-        let chunk_x = world_pos.x / CHUNK_SIZE as i64;
-        let chunk_y = world_pos.y / CHUNK_SIZE as i64;
-        let chunk_z = world_pos.z / CHUNK_SIZE as i64;
+    pub fn get_chunk(&self, world_pos: &Vector3<i64>) -> Option<&Chunk> {
+        let chunk_idx = (
+            world_pos.x / CHUNK_SIZE as i64,
+            world_pos.y / CHUNK_SIZE as i64,
+            world_pos.z / CHUNK_SIZE as i64,
+        );
+        self.chunks.get(&chunk_idx)
+    }
     
-        let local_x = (world_pos.x % CHUNK_SIZE as i64) as usize;
-        let local_y = (world_pos.y % CHUNK_SIZE as i64) as usize;
-        let local_z = (world_pos.z % CHUNK_SIZE as i64) as usize;
+    pub fn get_block(&self, world_pos: Vector3<i64>) -> Option<Block> {
+        let chunk = self.get_chunk(&world_pos);
         
-        let key = (chunk_x, chunk_y, chunk_z);
-        if let Some(chunk) = self.chunks.get(&key) {
-            chunk.try_get(local_x, local_y, local_z)
+        if let Some(chunk) = chunk {
+            chunk.get_from_world_pos(world_pos)
         } else { None }
     }
     
@@ -56,7 +59,7 @@ impl World {
                 for y in 0..CHUNK_SIZE {
                     for z in 0..CHUNK_SIZE {
                         let idx = Chunk::index(x, y, z);
-                        let voxel = chunk.voxels[idx];
+                        let voxel = chunk.blocks[idx];
                         
                         if voxel.color == (0, 0, 0) { 
                             continue; 
@@ -86,7 +89,7 @@ impl World {
                             if self.is_face_exposed(world_pos, dir) {
                                 let (v, mut i) = generate_voxel_face(
                                     world_pos, color, dir, voxel.tex_id
-                                ); //FIXME
+                                );
                                 
                                 for idx in &mut i {
                                     *idx += index_offset as u16;
@@ -106,11 +109,17 @@ impl World {
     }
     
     fn is_face_exposed(&self, pos: Vector3<f32>, dir: Vector3<f32>) -> bool {
+        // true
         let neighbor = Vector3::new(
             (pos.x + dir.x) as i64,
             (pos.y + dir.y) as i64,
             (pos.z + dir.z) as i64,
         );
-        self.get_voxel(neighbor).is_none()
+        let chunk = self.get_chunk(&neighbor);
+        if let Some(chunk) = chunk {
+            let block = chunk.get_from_world_pos(neighbor);
+            // !chunk.is_rendered || block.is_none() || block.unwrap().is_transpose()
+            block.unwrap_or(Block::air()).is_transpose()
+        } else { true }
     }
 }

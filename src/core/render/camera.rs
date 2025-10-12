@@ -1,8 +1,8 @@
-use cgmath::{InnerSpace, Matrix4, Point3, Vector3, Deg, PerspectiveFov};
+use cgmath::{Deg, InnerSpace, Matrix4, PerspectiveFov, Point3, Vector2, Vector3};
 
 pub struct Camera {
     pub pos: Vector3<f32>,
-    pub rot: Vector3<f32>,
+    pub rot: Vector2<f32>,
     pub fov: f32,
     pub aspect: f32,
     pub near: f32,
@@ -26,7 +26,7 @@ impl Default for UniformBuffer {
 }
 
 impl Camera {
-    pub fn new(pos: Vector3<f32>, rot: Vector3<f32>, aspect: f32) -> Self {
+    pub fn new(pos: Vector3<f32>, rot: Vector2<f32>, aspect: f32) -> Self {
         Self {
             pos,
             rot,
@@ -40,13 +40,12 @@ impl Camera {
     pub fn view_matrix(&self) -> Matrix4<f32> {
         let pitch = self.rot.x;
         let yaw = self.rot.y;
-        let up = Vector3::new(0.0, 1.0, 0.0);
         let forward = Vector3::new(
             yaw.sin() * pitch.cos(),
             pitch.sin(),
             -yaw.cos() * pitch.cos(),
         ).normalize();
-        let right = forward.cross(up).normalize();
+        let right = forward.cross(Vector3::unit_y()).normalize();
         let up = right.cross(forward).normalize();
         let pos = Point3::new(self.pos.x, self.pos.y, self.pos.z);
         Matrix4::look_at_rh(pos, pos + forward, up)

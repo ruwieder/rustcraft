@@ -3,11 +3,6 @@ mod app;
 
 use app::App;
 
-use std::sync::Mutex;
-use once_cell::sync::Lazy;
-
-// leaked pointer, fuck safety
-static WINDOW_PTR: Lazy<Mutex<Option<&'static winit::window::Window>>> = Lazy::new(|| Mutex::new(None));
 
 fn main() {
     let event_loop = winit::event_loop::EventLoop::new().expect("Failed to create event loop");

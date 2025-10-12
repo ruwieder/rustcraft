@@ -8,10 +8,15 @@ use std::time::Instant;
 use futures::executor::block_on;
 
 use crate::core::render::renderer::Renderer;
-use crate::WINDOW_PTR;
+
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+
+// leaked pointer, fuck safety
+static WINDOW_PTR: Lazy<Mutex<Option<&'static winit::window::Window>>> = Lazy::new(|| Mutex::new(None));
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct MovementState {
     forward: bool,
     backward: bool,
@@ -130,8 +135,8 @@ impl ApplicationHandler for App {
                     renderer.update_camera(
                         0.016,
                         (
-                            if self.movement.right { 1.0 } else { if self.movement.left { -1.0 } else { 0.0 } },
                             if self.movement.forward { 1.0 } else { if self.movement.backward { -1.0 } else { 0.0 } },
+                            if self.movement.right { 1.0 } else { if self.movement.left { -1.0 } else { 0.0 } },
                             if self.movement.up { 1.0 } else { if self.movement.down { -1.0 } else { 0.0 } },
                         ),
                         delta,
@@ -150,8 +155,8 @@ impl ApplicationHandler for App {
                 renderer.update_camera(
                     delta_time,
                     (
-                        if self.movement.right { 1.0 } else { if self.movement.left { -1.0 } else { 0.0 } },
                         if self.movement.forward { 1.0 } else { if self.movement.backward { -1.0 } else { 0.0 } },
+                        if self.movement.right { 1.0 } else { if self.movement.left { -1.0 } else { 0.0 } },
                         if self.movement.up { 1.0 } else { if self.movement.down { -1.0 } else { 0.0 } },
                     ),
                     (0.0, 0.0),
