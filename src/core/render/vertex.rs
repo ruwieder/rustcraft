@@ -79,72 +79,78 @@ pub fn generate_voxel_mesh(voxel_pos: Vector3<f32>, tex_coord: [f32; 2]) -> (Vec
 }
 
 pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f32>, texture_id: u16) -> (Vec<Vertex>, Vec<u16>) {
-    let half = 0.5;
-    let texture_atlas_size = 32.0; // atlas as 32x32 textures
-    let tex_size = 1.0 / texture_atlas_size;
+    const ATLAS_WIDTH: f32 = 1024.0;
+    const ATLAS_HEIGHT: f32 = 512.0;
+    const TEXTURE_SIZE: f32 = 16.0;
+    const TEXTURES_PER_ROW: f32 = ATLAS_WIDTH / TEXTURE_SIZE;
+    const TEXTURES_PER_COL: f32 = ATLAS_HEIGHT / TEXTURE_SIZE;
+    const TEX_SIZE_U: f32 = TEXTURE_SIZE / ATLAS_WIDTH; 
+    const TEX_SIZE_V: f32 = TEXTURE_SIZE / ATLAS_HEIGHT;
     
-    let tex_x = (texture_id % texture_atlas_size as u16) as f32 * tex_size;
-    let tex_y = (texture_id / texture_atlas_size as u16) as f32 * tex_size;
+    const HALF: f32 = 0.49; // FIXME: should be 0.5 for no gaps
     
+    let tex_x = (texture_id as f32 % TEXTURES_PER_ROW) * TEX_SIZE_U;
+    let tex_y = (texture_id as f32 / TEXTURES_PER_COL) * TEX_SIZE_V;
+
     let uvs = [
         [tex_x, tex_y],
-        [tex_x + tex_size, tex_y],
-        [tex_x + tex_size, tex_y + tex_size],
-        [tex_x, tex_y + tex_size],
+        [tex_x + TEX_SIZE_U, tex_y],
+        [tex_x + TEX_SIZE_U, tex_y + TEX_SIZE_V],
+        [tex_x, tex_y + TEX_SIZE_V],
     ];
     
     let faces = match normal {
-        Vector3 { x: -1.0, y: 0.0, z: 0.0 } => ( // Left
+        Vector3 { x: 1.0, y: 0.0, z: 0.0 } => (
             [
-                Vector3::new(-half, -half, -half),
-                Vector3::new(-half, -half, half),
-                Vector3::new(-half, half, half),
-                Vector3::new(-half, half, -half),
+                Vector3::new(HALF, -HALF, -HALF),  // bottom-right-back
+                Vector3::new(HALF, HALF, -HALF),   // bottom-right-front
+                Vector3::new(HALF, HALF, HALF),    // top-right-front
+                Vector3::new(HALF, -HALF, HALF),   // top-right-back
             ],
             [0, 1, 2, 2, 3, 0]
         ),
-        Vector3 { x: 1.0, y: 0.0, z: 0.0 } => ( // Right
+        Vector3 { x: -1.0, y: 0.0, z: 0.0 } => (
             [
-                Vector3::new(half, -half, half),
-                Vector3::new(half, -half, -half),
-                Vector3::new(half, half, -half),
-                Vector3::new(half, half, half),
+                Vector3::new(-HALF, HALF, -HALF),  // bottom-left-front
+                Vector3::new(-HALF, -HALF, -HALF), // bottom-left-back
+                Vector3::new(-HALF, -HALF, HALF),  // top-left-back
+                Vector3::new(-HALF, HALF, HALF),   // top-left-front
             ],
             [0, 1, 2, 2, 3, 0]
         ),
-        Vector3 { x: 0.0, y: -1.0, z: 0.0 } => ( // Bottom
+        Vector3 { x: 0.0, y: 1.0, z: 0.0 } => (
             [
-                Vector3::new(-half, -half, -half),
-                Vector3::new(half, -half, -half),
-                Vector3::new(half, -half, half),
-                Vector3::new(-half, -half, half),
+                Vector3::new(-HALF, HALF, -HALF),  // bottom-front-left
+                Vector3::new(HALF, HALF, -HALF),   // bottom-front-right
+                Vector3::new(HALF, HALF, HALF),    // top-front-right
+                Vector3::new(-HALF, HALF, HALF),   // top-front-left
             ],
             [0, 1, 2, 2, 3, 0]
         ),
-        Vector3 { x: 0.0, y: 1.0, z: 0.0 } => ( // Top
+        Vector3 { x: 0.0, y: -1.0, z: 0.0 } => (
             [
-                Vector3::new(-half, half, half),
-                Vector3::new(half, half, half),
-                Vector3::new(half, half, -half),
-                Vector3::new(-half, half, -half),
+                Vector3::new(HALF, -HALF, -HALF),  // bottom-back-right
+                Vector3::new(-HALF, -HALF, -HALF), // bottom-back-left
+                Vector3::new(-HALF, -HALF, HALF),  // top-back-left
+                Vector3::new(HALF, -HALF, HALF),   // top-back-right
             ],
             [0, 1, 2, 2, 3, 0]
         ),
-        Vector3 { x: 0.0, y: 0.0, z: -1.0 } => ( // Back
+        Vector3 { x: 0.0, y: 0.0, z: 1.0 } => (
             [
-                Vector3::new(half, -half, -half),
-                Vector3::new(-half, -half, -half),
-                Vector3::new(-half, half, -half),
-                Vector3::new(half, half, -half),
+                Vector3::new(-HALF, -HALF, HALF),  // back-left-top
+                Vector3::new(HALF, -HALF, HALF),   // back-right-top
+                Vector3::new(HALF, HALF, HALF),    // front-right-top
+                Vector3::new(-HALF, HALF, HALF),   // front-left-top
             ],
             [0, 1, 2, 2, 3, 0]
         ),
-        Vector3 { x: 0.0, y: 0.0, z: 1.0 } => ( // Front
+        Vector3 { x: 0.0, y: 0.0, z: -1.0 } => (
             [
-                Vector3::new(-half, -half, half),
-                Vector3::new(half, -half, half),
-                Vector3::new(half, half, half),
-                Vector3::new(-half, half, half),
+                Vector3::new(-HALF, HALF, -HALF),  // front-left-bottom
+                Vector3::new(HALF, HALF, -HALF),   // front-right-bottom
+                Vector3::new(HALF, -HALF, -HALF),  // back-right-bottom
+                Vector3::new(-HALF, -HALF, -HALF), // back-left-bottom
             ],
             [0, 1, 2, 2, 3, 0]
         ),

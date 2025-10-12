@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use cgmath::Vector3;
 use crate::core::{render::vertex::generate_voxel_face, *};
 
-const DEFAULT_COLOR: (u8, u8, u8) = (255, 100, 100);
-const DEFAULT_TEX_ID: u16 = 25;
+const DEFAULT_COLOR: (u8, u8, u8) = (100, 100, 100);
+const DEFAULT_TEX_ID: u16 = 11;
 
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>
@@ -14,7 +14,7 @@ impl World {
         let mut world = Self{
             chunks: HashMap::new(),
         };
-        for x in -3..=3 {
+        for x in 0..=0 {
             for y in 0..=0 {
                 world.load_chunks(x, y, 0);
             }
@@ -58,15 +58,15 @@ impl World {
                 for y in 0..CHUNK_SIZE {
                     for z in 0..CHUNK_SIZE {
                         let idx = Chunk::index(x, y, z);
-                        let voxel = chunk.blocks[idx];
+                        let block = chunk.blocks[idx];
                         
-                        if voxel.color == (0, 0, 0) { 
+                        if block.is_transpose() { 
                             continue; 
                         }
                         let color = [
-                            voxel.color.0 as f32 / 255.0,
-                            voxel.color.1 as f32 / 255.0,
-                            voxel.color.2 as f32 / 255.0,
+                            block.color.0 as f32 / 255.0,
+                            block.color.1 as f32 / 255.0,
+                            block.color.2 as f32 / 255.0,
                         ];
                         
                         let world_pos = Vector3::new(
@@ -74,15 +74,6 @@ impl World {
                             (chunk_pos.1 * CHUNK_SIZE as i64 + y as i64) as f32, 
                             (chunk_pos.2 * CHUNK_SIZE as i64 + z as i64) as f32,
                         );
-                        
-                        // let directions = [
-                        //     Vector3::new(-1.0, 0.0, 0.0), // left
-                        //     Vector3::new(1.0, 0.0, 0.0),  // right
-                        //     Vector3::new(0.0, -1.0, 0.0), // bottom
-                        //     Vector3::new(0.0, 1.0, 0.0),  // top
-                        //     Vector3::new(0.0, 0.0, -1.0), // back
-                        //     Vector3::new(0.0, 0.0, 1.0),  // front
-                        // ];
                         let directions = [
                             Vector3::new(0.0, -1.0, 0.0), // left
                             Vector3::new(0.0, 1.0, 0.0),  // right
@@ -91,11 +82,10 @@ impl World {
                             Vector3::new(-1.0, 0.0, 0.0), // back
                             Vector3::new(1.0, 0.0, 0.0),  // front
                         ];
-                        
                         for dir in directions {
                             if self.is_face_exposed(world_pos, dir) {
                                 let (v, mut i) = generate_voxel_face(
-                                    world_pos, color, dir, voxel.tex_id
+                                    world_pos, color, dir, block.tex_id
                                 );
                                 
                                 for idx in &mut i {
@@ -111,7 +101,6 @@ impl World {
                 }
             }
         }
-        
         (vertices, indices)
     }
     

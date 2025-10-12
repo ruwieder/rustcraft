@@ -69,7 +69,6 @@ impl Renderer {
         };
         surface.configure(&device, &config);
         
-        // Create depth texture once
         let depth_texture = device.create_texture(&TextureDescriptor {
             label: Some("Depth Texture"),
             size: Extent3d {
@@ -231,6 +230,9 @@ impl Renderer {
             config.width as f32 / config.height as f32,
         );
         
+        let uniform = camera.get_uniform();
+        queue.write_buffer(&uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
+        
         Self {
             device,
             queue,
@@ -292,7 +294,7 @@ impl Renderer {
                         load: LoadOp::Clear(Color::BLACK),
                         store: StoreOp::Store,
                     },
-                    depth_slice: None, // Added this field
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                     view: &depth_view,
@@ -326,8 +328,7 @@ impl Renderer {
             return;
         }
         self.camera.update(dt, movement, mouse_delta);
-        let mut uniform = UniformBuffer::default();
-        self.camera.update_uniform(&mut uniform);
+        let uniform = self.camera.get_uniform();
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
     }
     

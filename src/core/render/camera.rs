@@ -48,7 +48,7 @@ impl Camera {
         
         let (forward, right, up) = self.fru();
         self.pos += forward * movement.0 * speed;
-        self.pos += right * movement.1 * speed;
+        self.pos -= right * movement.1 * speed;
         self.pos += up * movement.2 * speed;
     }
     
@@ -68,15 +68,17 @@ impl Camera {
             Matrix4::from(perspective)
     }
     
-    pub fn update_uniform(&self, uniform: &mut UniformBuffer) {
+    pub fn get_uniform(&self) -> UniformBuffer {
+        let mut uniform = UniformBuffer::default();
         let view = self.view_matrix();
         let proj = self.proj_matrix();
         uniform.view_proj = (proj * view).into();
         uniform.camera_pos = [self.pos.x, self.pos.y, self.pos.z, 69.0];
+        uniform
     }
     
+    /// (forward, right, up)
     pub fn fru(&self) -> (Vector3<f32>, Vector3<f32>, Vector3<f32>) {
-        // forward - right - up
         let (sin_yaw, cos_yaw) = (self.rot.y.sin(), self.rot.y.cos());
         let (sin_pitch, cos_pitch) = (self.rot.x.sin(), self.rot.x.cos());
         let forward = Vector3::new(
