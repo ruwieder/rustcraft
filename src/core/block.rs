@@ -1,13 +1,12 @@
-type Color = (u8, u8, u8);
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Block {
-    pub color: Color,
+    pub color: (u8, u8, u8), // FIXME: remove later
     pub id: u16,
 }
 
 #[allow(dead_code)]
 impl Block {
-    pub fn new(color: Color, block_id: u16) -> Self {
+    pub fn new(color: (u8, u8, u8), block_id: u16) -> Self {
         Self{ color, id: block_id }
     }
     

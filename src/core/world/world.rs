@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use cgmath::Vector3;
 use crate::core::{render::vertex::generate_voxel_face, *};
 
-const DEFAULT_COLOR: (u8, u8, u8) = (100, 100, 100);
-const DEFAULT_BLOCK_ID: u16 = 11;
+const DEFAULT_COLOR: (u8, u8, u8) = (255, 0, 255);
+const DEFAULT_BLOCK_ID: u16 = 64*4 + 21;
 const FACE_CULLING: bool = true;
 
 pub struct World {
@@ -21,10 +21,10 @@ impl World {
         //     }
         // }
         world.load_chunks(0, 0, 0);
-        world.load_chunks(-1, -1, 0);
-        world.load_chunks(1, -1, 0);
-        world.load_chunks(-1, 1, 0);
-        world.load_chunks(1, 1, 0);
+        // world.load_chunks(-1, -1, 0);
+        // world.load_chunks(1, -1, 0);
+        // world.load_chunks(-1, 1, 0);
+        // world.load_chunks(1, 1, 0);
         world
     }
     
@@ -69,6 +69,7 @@ impl World {
                         if block.is_transpose() { 
                             continue; 
                         }
+                        
                         let color = [
                             block.color.0 as f32 / 255.0,
                             block.color.1 as f32 / 255.0,

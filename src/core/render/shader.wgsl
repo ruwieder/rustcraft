@@ -1,10 +1,10 @@
-struct UniformBuffer {
+struct CameraUniforms {
     view_proj: mat4x4<f32>,
-    position: vec4<f32>,
+    camera_pos: vec4<f32>, // Better name than 'position'
 }
 
 @group(0) @binding(0)
-var<uniform> uniforms: UniformBuffer;
+var<uniform> camera: CameraUniforms;
 
 @group(1) @binding(0)
 var texture_atlas: texture_2d<f32>;
@@ -27,7 +27,7 @@ struct VertexOutput {
 @vertex
 fn vs_main(model: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = uniforms.view_proj * vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.view_proj * vec4<f32>(model.position, 1.0);
     out.tex_coords = model.tex_coords;
     out.color = model.color;
     return out;
@@ -36,7 +36,7 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let texture_color = textureSample(texture_atlas, texture_sampler, in.tex_coords);
-    // return texture_color * vec4<f32>(in.color, 1.0);
-    return vec4<f32>(in.color, 1.0);
-    // return texture_color;
+    // return vec4<f32>(in.tex_coords, 0.0, 1.0); // UVs
+    // return vec4<f32>(in.color, 1.0); // vertex colors
+    return texture_color; // texture sampling
 }

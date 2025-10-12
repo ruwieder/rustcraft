@@ -41,10 +41,10 @@ impl Texture {
         });
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
-                aspect: wgpu::TextureAspect::All,
                 texture: &texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
             },
             &rgba,
             wgpu::TexelCopyBufferLayout {
