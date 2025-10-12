@@ -342,17 +342,17 @@ impl Renderer {
             self.camera.rot.y.cos()
         );
         let u = Vector3::unit_y();
-        let forward = Vector3::new(
-            cos_yaw * cos_pitch,
-            sin_pitch,
-            sin_yaw * cos_pitch
-        ).normalize();
-        let right = Vector3::new(
-            -sin_yaw,
-            0.0,
-            cos_yaw
-        ).normalize();
-        let up = right.cross(forward).normalize();
+        // let forward = Vector3::new(
+        //     cos_yaw * cos_pitch,
+        //     sin_pitch,
+        //     sin_yaw * cos_pitch
+        // ).normalize();
+        // let right = Vector3::new(
+        //     -sin_yaw,
+        //     0.0,
+        //     cos_yaw
+        // ).normalize();
+        // let up = right.cross(forward).normalize();
         
         // self.camera.pos += forward * movement.0 * speed; // Forward/backward
         // self.camera.pos += right * movement.1 * speed;   // Left/right
