@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use cgmath::Vector3;
-use crate::core::{render::vertex::generate_voxel_face, *};
+use crate::core::{render::{face_gen::generate_face, greedy_mesher::GreedyMesher, vertex::generate_voxel_face}, *};
 
 const DEFAULT_COLOR: (u8, u8, u8) = (255, 0, 255);
-const DEFAULT_BLOCK_ID: u16 = 64*4 + 21;
+const DEFAULT_BLOCK_ID: u16 = 20;
 const FACE_CULLING: bool = true;
 
 pub struct World {
@@ -15,12 +15,13 @@ impl World {
         let mut world = Self{
             chunks: HashMap::new(),
         };
-        // for x in -5..=5 {
-        //     for y in -5..=5 {
-        //         world.load_chunks(x, y, 0);
-        //     }
-        // }
-        world.load_chunks(0, 0, 0);
+        for x in -5..=5 {
+            for y in -5..=5 {
+                world.load_chunks(x, y, 0);
+            }
+        }
+        // world.load_chunks(0, 0, 0);
+        // world.load_chunks(1, 0, 0);
         // world.load_chunks(-1, -1, 0);
         // world.load_chunks(1, -1, 0);
         // world.load_chunks(-1, 1, 0);
@@ -54,7 +55,7 @@ impl World {
         } else { None }
     }
     
-    pub fn build_mesh(&self) -> (Vec<Vertex>, Vec<u32>) {
+    pub fn build_mesh_naive(&self) -> (Vec<Vertex>, Vec<u32>) {
         let mut vertices = Vec::new();
         let mut indices: Vec<u32> = Vec::new();
         let mut index_offset = 0u32;
@@ -91,8 +92,11 @@ impl World {
                         ];
                         for dir in directions {
                             if !FACE_CULLING || self.is_face_exposed(world_pos, dir) {
-                                let (v, mut i) = generate_voxel_face(
-                                    world_pos, color, dir, block.id
+                                // let (v, mut i) = generate_voxel_face(
+                                //     world_pos, color, dir, block.id
+                                // );
+                                let (v, mut i) = generate_face(
+                                    world_pos, color, dir, block.id, 1.0, 1.0
                                 );
                                 
                                 for idx in &mut i {
@@ -111,7 +115,36 @@ impl World {
         (vertices, indices)
     }
     
-    fn is_face_exposed(&self, pos: Vector3<f32>, dir: Vector3<f32>) -> bool {
+    pub fn build_mesh_greedy(&self) -> (Vec<Vertex>, Vec<u32>) {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+        let mut index_offset = 0u32;
+
+        for (chunk_pos, chunk) in &self.chunks {
+            if !chunk.is_rendered {
+                continue;
+            }
+            let chunk_vertices = GreedyMesher::build_mesh(chunk, self);
+            let vertex_count = chunk_vertices.0.len();
+            // Transform vertices to world coordinates
+            for mut vertex in chunk_vertices.0 {
+                vertex.pos[0] += chunk_pos.0 as f32 * CHUNK_SIZE as f32;
+                vertex.pos[1] += chunk_pos.1 as f32 * CHUNK_SIZE as f32;
+                vertex.pos[2] += chunk_pos.2 as f32 * CHUNK_SIZE as f32;
+                vertices.push(vertex);
+            }
+
+            for index in chunk_vertices.1 {
+                indices.push(index + index_offset);
+            }
+
+            index_offset += vertex_count as u32;
+        }
+
+        (vertices, indices)
+    }
+    
+    pub fn is_face_exposed(&self, pos: Vector3<f32>, dir: Vector3<f32>) -> bool {
         let neighbor = Vector3::new(
             (pos.x + dir.x) as i64,
             (pos.y + dir.y) as i64,

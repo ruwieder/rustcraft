@@ -7,6 +7,7 @@ use crate::core::World;
 use crate::core::Vertex;
 
 const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 255.0 / 255.0, a: 1.0 };
+const USE_GREEDY: bool = true;
 
 pub struct Renderer {
     pub device: Device,
@@ -211,7 +212,12 @@ impl Renderer {
         });
         
         let world = World::new();
-        let (vertices, indices) = world.build_mesh();
+        let (vertices, indices) = if USE_GREEDY {
+            world.build_mesh_greedy()
+        } else {
+            world.build_mesh_naive()
+        };
+        println!("{} vertices generated", vertices.len());
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertices),
@@ -335,7 +341,7 @@ impl Renderer {
     }
     
     pub fn update_mesh(&mut self) {
-        let (vertices, indices) = self.world.build_mesh();
+        let (vertices, indices) = self.world.build_mesh_naive();
         
         self.vertex_buffer = self.device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
