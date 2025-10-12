@@ -10,12 +10,12 @@ pub struct World {
 }
 
 impl World {
-    pub fn new(range_x: Range<i64>, range_z: Range<i64>) -> Self {
+    pub fn new() -> Self {
         let mut world = Self{
             chunks: HashMap::new(),
         };
         for x in -3..=3 {
-            for z in -2..=2 {
+            for z in 0..=0 {
                 world.load_chunks(x, 0, z);
             }
         }

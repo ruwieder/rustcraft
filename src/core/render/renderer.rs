@@ -1,3 +1,4 @@
+use std::f32::consts::PI;
 use wgpu::*;
 use wgpu::util::DeviceExt;
 use cgmath::{InnerSpace, Vector2, Vector3};
@@ -208,7 +209,7 @@ impl Renderer {
             cache: None,
         });
         
-        let world = World::new(-1..2, -1..2);
+        let world = World::new();
         let (vertices, indices) = world.build_mesh();
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -225,8 +226,8 @@ impl Renderer {
         let index_count = indices.len() as u32;
         
         let camera = Camera::new(
-            Vector3::new(-35.66, 6.776, -8.67),
-            Vector2::new(-0.139, 2.016),
+            Vector3::new(0.0, 10.0, 0.0),
+            Vector2::new(0.0, 0.0),
             config.width as f32 / config.height as f32,
         );
         
@@ -320,48 +321,7 @@ impl Renderer {
     }
     
     pub fn update_camera(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
-        let speed = 8.0 * dt as f32;
-        let rot_speed = 0.15 * dt as f32;
-        
-        self.camera.rot.y += mouse_delta.0 * rot_speed; // Yaw (left-right)
-        self.camera.rot.x += mouse_delta.1 * rot_speed; // Pitch (up-down)
-        
-        self.camera.rot.x = self.camera.rot.x.clamp(-1.5, 1.5);
-        
-        let (sin_yaw, cos_yaw) = (self.camera.rot.y.sin(), self.camera.rot.y.cos());
-        let (sin_pitch, cos_pitch) = (self.camera.rot.x.sin(), self.camera.rot.x.cos());
-        
-        let f = Vector3::new(
-            self.camera.rot.y.cos(), 
-            0.0,
-            self.camera.rot.y.sin()
-        );
-        let r = Vector3::new(
-            -self.camera.rot.y.sin(),
-            0.0,
-            self.camera.rot.y.cos()
-        );
-        let u = Vector3::unit_y();
-        // let forward = Vector3::new(
-        //     cos_yaw * cos_pitch,
-        //     sin_pitch,
-        //     sin_yaw * cos_pitch
-        // ).normalize();
-        // let right = Vector3::new(
-        //     -sin_yaw,
-        //     0.0,
-        //     cos_yaw
-        // ).normalize();
-        // let up = right.cross(forward).normalize();
-        
-        // self.camera.pos += forward * movement.0 * speed; // Forward/backward
-        // self.camera.pos += right * movement.1 * speed;   // Left/right
-        // self.camera.pos += up * movement.2 * speed;      // Up/down
-        debug_assert!(!self.camera.pos.x.is_nan());
-        debug_assert!(!self.camera.pos.y.is_nan());
-        debug_assert!(!self.camera.pos.z.is_nan());
-        self.camera.pos += speed * (f * movement.0 + r * movement.1 + u * movement.2);
-        
+        self.camera.update(dt, movement, mouse_delta);
         let mut uniform = UniformBuffer::default();
         self.camera.update_uniform(&mut uniform);
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
