@@ -54,7 +54,7 @@ impl App {
 
     // Helper method to get the window from the static
     fn get_window(&self) -> &'static Window {
-        *WINDOW_PTR.lock().unwrap().as_ref().expect("Window not initialized")
+        WINDOW_PTR.lock().unwrap().as_ref().expect("Window not initialized")
     }
 }
 
@@ -135,9 +135,9 @@ impl ApplicationHandler for App {
                     renderer.update_camera(
                         0.016,
                         (
-                            if self.movement.forward { 1.0 } else { if self.movement.backward { -1.0 } else { 0.0 } },
-                            if self.movement.right { 1.0 } else { if self.movement.left { -1.0 } else { 0.0 } },
-                            if self.movement.up { 1.0 } else { if self.movement.down { -1.0 } else { 0.0 } },
+                            if self.movement.forward { 1.0 } else if self.movement.backward { -1.0 } else { 0.0 },
+                            if self.movement.right { 1.0 } else if self.movement.left { -1.0 } else { 0.0 },
+                            if self.movement.up { 1.0 } else if self.movement.down { -1.0 } else { 0.0 },
                         ),
                         delta,
                     );
@@ -155,9 +155,9 @@ impl ApplicationHandler for App {
                 renderer.update_camera(
                     delta_time,
                     (
-                        if self.movement.forward { 1.0 } else { if self.movement.backward { -1.0 } else { 0.0 } },
-                        if self.movement.right { 1.0 } else { if self.movement.left { -1.0 } else { 0.0 } },
-                        if self.movement.up { 1.0 } else { if self.movement.down { -1.0 } else { 0.0 } },
+                        if self.movement.forward { 1.0 } else if self.movement.backward { -1.0 } else { 0.0 },
+                        if self.movement.right { 1.0 } else if self.movement.left { -1.0 } else { 0.0 },
+                        if self.movement.up { 1.0 } else if self.movement.down { -1.0 } else { 0.0 },
                     ),
                     (0.0, 0.0),
                 );

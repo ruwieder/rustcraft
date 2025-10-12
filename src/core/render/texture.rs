@@ -1,4 +1,3 @@
-use wgpu::*;
 use anyhow::*;
 use image::GenericImageView;
 

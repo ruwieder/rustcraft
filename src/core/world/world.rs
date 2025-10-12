@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use cgmath::Vector3;
-use crate::core::{render::{face_gen::generate_face, greedy_mesher::GreedyMesher, vertex::generate_voxel_face}, *};
+use crate::core::{render::{face_gen::generate_face, greedy_mesher::GreedyMesher}, *};
 
 const DEFAULT_COLOR: (u8, u8, u8) = (255, 0, 255);
 const DEFAULT_BLOCK_ID: u16 = 20;
@@ -15,8 +15,8 @@ impl World {
         let mut world = Self{
             chunks: HashMap::new(),
         };
-        for x in -5..=5 {
-            for y in -5..=5 {
+        for x in -10..=10 {
+            for y in -10..=10 {
                 world.load_chunks(x, y, 0);
             }
         }
@@ -31,11 +31,9 @@ impl World {
     
     pub fn load_chunks(&mut self, x: i64, y: i64, z: i64) {
         let key = (x, y, z);
-        if !self.chunks.contains_key(&key) {
-            self.chunks.insert(key, 
-                Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_BLOCK_ID)
-            );
-        };
+        self.chunks.entry(key).or_insert_with(
+            || Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_BLOCK_ID)
+        );
     }
     
     pub fn get_chunk(&self, world_pos: &Vector3<i64>) -> Option<&Chunk> {

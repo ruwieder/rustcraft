@@ -25,9 +25,9 @@ impl Chunk {
     
     pub fn new_flat(pos: Vector3<i64>, color: (u8, u8, u8), block_id: u16) -> Self {
         let mut blocks = [Block::air(); CHUNK_VOLUME];
-        for i in 0..(CHUNK_SIZE * CHUNK_SIZE) {
-            blocks[i].color = color;
-            blocks[i].id = block_id;
+        for block in blocks.iter_mut().take(CHUNK_SIZE * CHUNK_SIZE) {
+            block.color = color;
+            block.id = block_id;
         }
         Chunk { blocks, _pos: pos, is_rendered: true }
     }

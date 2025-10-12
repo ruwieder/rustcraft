@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, Vector3, Zero};
+use cgmath::{Vector3, Zero};
 use wgpu::VertexFormat;
 
 #[repr(C)]

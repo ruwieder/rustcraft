@@ -1,12 +1,11 @@
-use std::f32::consts::PI;
 use wgpu::*;
 use wgpu::util::DeviceExt;
-use cgmath::{InnerSpace, Vector2, Vector3};
+use cgmath::{Vector2, Vector3};
 use crate::core::render::{texture, camera::{Camera, UniformBuffer}};
 use crate::core::World;
 use crate::core::Vertex;
 
-const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 255.0 / 255.0, a: 1.0 };
+const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 1.0, a: 1.0 };
 const USE_GREEDY: bool = true;
 
 pub struct Renderer {

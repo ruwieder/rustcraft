@@ -33,7 +33,7 @@ impl GreedyMesher {
         indices: &mut Vec<u32>,
         index_offset: &mut u32,
     ) {
-        let mut visited = [[[false; 16]; 16]; 16];
+        let mut visited = [[[false; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
 
         // Determine which dimension is the "depth" (the one we're looking at)
         let (u_axis, v_axis, depth_axis) = if normal.x.abs() > 0.5 {
@@ -47,13 +47,13 @@ impl GreedyMesher {
             (Vector3::new(1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0), Vector3::new(0.0, 0.0, 1.0))
         };
 
-        for depth in 0..16 {
-            for u in 0..16 {
-                for v in 0..16 {
+        for depth in 0..CHUNK_SIZE {
+            for u in 0..CHUNK_SIZE {
+                for v in 0..CHUNK_SIZE {
                     let pos = Self::get_position(u_axis, v_axis, depth_axis, depth, u, v);
                     let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
                     
-                    if x >= 16 || y >= 16 || z >= 16 || visited[x][y][z] {
+                    if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE || visited[x][y][z] {
                         continue;
                     }
 
@@ -64,9 +64,9 @@ impl GreedyMesher {
                     }
 
                     let world_pos = Vector3::new(
-                        pos.x + chunk._pos.x as f32 * 16.0,
-                        pos.y + chunk._pos.y as f32 * 16.0,
-                        pos.z + chunk._pos.z as f32 * 16.0,
+                        pos.x + chunk._pos.x as f32 * CHUNK_SIZE as f32,
+                        pos.y + chunk._pos.y as f32 * CHUNK_SIZE as f32,
+                        pos.z + chunk._pos.z as f32 * CHUNK_SIZE as f32,
                     );
                     if !world.is_face_exposed(world_pos, normal) {
                         continue;
@@ -79,7 +79,6 @@ impl GreedyMesher {
 
                     if quad_width > 0 && quad_height > 0 {
                         Self::create_greedy_quad(
-                            chunk,
                             normal,
                             depth,
                             u,
@@ -100,7 +99,7 @@ impl GreedyMesher {
                             for dv in 0..quad_height {
                                 let quad_pos = Self::get_position(u_axis, v_axis, depth_axis, depth, u + du, v + dv);
                                 let (qx, qy, qz) = (quad_pos.x as usize, quad_pos.y as usize, quad_pos.z as usize);
-                                if qx < 16 && qy < 16 && qz < 16 {
+                                if qx < CHUNK_SIZE && qy < CHUNK_SIZE && qz < CHUNK_SIZE {
                                     visited[qx][qy][qz] = true;
                                 }
                             }
@@ -110,7 +109,7 @@ impl GreedyMesher {
             }
         }
     }
-
+    #[allow(clippy::too_many_arguments)]
     fn find_quad(
         chunk: &Chunk,
         world: &World,
@@ -122,10 +121,10 @@ impl GreedyMesher {
         u_axis: Vector3<f32>,
         v_axis: Vector3<f32>,
         depth_axis: Vector3<f32>,
-        visited: &mut [[[bool; 16]; 16]; 16],
+        visited: &mut [[[bool; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE],
     ) -> (usize, usize) {
-        let max_width = 16 - start_u;
-        let max_height = 16 - start_v;
+        let max_width = CHUNK_SIZE - start_u;
+        let max_height = CHUNK_SIZE - start_v;
         let mut quad_width = 1;
         let mut quad_height = 1;
 
@@ -135,7 +134,7 @@ impl GreedyMesher {
                 let pos = Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
                 let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
                 
-                if x >= 16 || y >= 16 || z >= 16 || visited[x][y][z] {
+                if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE || visited[x][y][z] {
                     break 'width_loop;
                 }
 
@@ -146,9 +145,9 @@ impl GreedyMesher {
                 }
 
                 let world_pos = Vector3::new(
-                    pos.x + chunk._pos.x as f32 * 16.0,
-                    pos.y + chunk._pos.y as f32 * 16.0,
-                    pos.z + chunk._pos.z as f32 * 16.0,
+                    pos.x + chunk._pos.x as f32 * CHUNK_SIZE as f32,
+                    pos.y + chunk._pos.y as f32 * CHUNK_SIZE as f32,
+                    pos.z + chunk._pos.z as f32 * CHUNK_SIZE as f32,
                 );
                 if !world.is_face_exposed(world_pos, normal) {
                     break 'width_loop;
@@ -163,7 +162,7 @@ impl GreedyMesher {
                 let pos = Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
                 let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
                 
-                if x >= 16 || y >= 16 || z >= 16 || visited[x][y][z] {
+                if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE || visited[x][y][z] {
                     break 'height_loop;
                 }
 
@@ -174,9 +173,9 @@ impl GreedyMesher {
                 }
 
                 let world_pos = Vector3::new(
-                    pos.x + chunk._pos.x as f32 * 16.0,
-                    pos.y + chunk._pos.y as f32 * 16.0,
-                    pos.z + chunk._pos.z as f32 * 16.0,
+                    pos.x + chunk._pos.x as f32 * CHUNK_SIZE as f32,
+                    pos.y + chunk._pos.y as f32 * CHUNK_SIZE as f32,
+                    pos.z + chunk._pos.z as f32 * CHUNK_SIZE as f32,
                 );
                 if !world.is_face_exposed(world_pos, normal) {
                     break 'height_loop;
@@ -187,9 +186,8 @@ impl GreedyMesher {
 
         (quad_width, quad_height)
     }
-
+    #[allow(clippy::too_many_arguments)]
     fn create_greedy_quad(
-        chunk: &Chunk,
         normal: Vector3<f32>,
         depth: usize,
         u: usize,

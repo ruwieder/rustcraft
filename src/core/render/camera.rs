@@ -33,7 +33,7 @@ impl Camera {
             fov: 90.0,
             aspect,
             near: 0.1,
-            far: 1000.0
+            far: 10_000.0
         }
     }
     
