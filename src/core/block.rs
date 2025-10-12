@@ -1,21 +1,21 @@
 type Color = (u8, u8, u8);
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Block {
     pub color: Color,
-    pub tex_id: u16,
+    pub id: u16,
 }
 
 #[allow(dead_code)]
 impl Block {
-    pub fn new(color: Color, tex_id: u16) -> Self {
-        Self{ color, tex_id }
+    pub fn new(color: Color, block_id: u16) -> Self {
+        Self{ color, id: block_id }
     }
     
     pub fn air() -> Self {
-        Self {color: (0, 0, 0), tex_id: 0}
+        Self {color: (0, 0, 0), id: 0}
     }
     
     pub fn is_transpose(&self) -> bool {
-        self.tex_id == 0
+        self.id == 0
     }
 }

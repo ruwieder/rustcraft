@@ -6,6 +6,8 @@ use crate::core::render::{texture, camera::{Camera, UniformBuffer}};
 use crate::core::World;
 use crate::core::Vertex;
 
+const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 255.0 / 255.0, a: 1.0 };
+
 pub struct Renderer {
     pub device: Device,
     pub queue: Queue,
@@ -291,7 +293,7 @@ impl Renderer {
                     view: &view,
                     resolve_target: None,
                     ops: Operations {
-                        load: LoadOp::Clear(Color::BLACK),
+                        load: LoadOp::Clear(SKYBOX),
                         store: StoreOp::Store,
                     },
                     depth_slice: None,
@@ -312,7 +314,7 @@ impl Renderer {
             render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
             render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
             render_pass.draw_indexed(0..self.index_count, 0, 0..1);
         }
         

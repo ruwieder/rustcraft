@@ -3,7 +3,8 @@ use cgmath::Vector3;
 use crate::core::{render::vertex::generate_voxel_face, *};
 
 const DEFAULT_COLOR: (u8, u8, u8) = (100, 100, 100);
-const DEFAULT_TEX_ID: u16 = 11;
+const DEFAULT_BLOCK_ID: u16 = 11;
+const FACE_CULLING: bool = true;
 
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>
@@ -14,11 +15,16 @@ impl World {
         let mut world = Self{
             chunks: HashMap::new(),
         };
-        for x in 0..=0 {
-            for y in 0..=0 {
-                world.load_chunks(x, y, 0);
-            }
-        }
+        // for x in -5..=5 {
+        //     for y in -5..=5 {
+        //         world.load_chunks(x, y, 0);
+        //     }
+        // }
+        world.load_chunks(0, 0, 0);
+        // world.load_chunks(-1, -1, 0);
+        // world.load_chunks(1, -1, 0);
+        // world.load_chunks(-1, 1, 0);
+        // world.load_chunks(1, 1, 0);
         world
     }
     
@@ -26,7 +32,7 @@ impl World {
         let key = (x, y, z);
         if !self.chunks.contains_key(&key) {
             self.chunks.insert(key, 
-                Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_TEX_ID)
+                Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_BLOCK_ID)
             );
         };
     }
@@ -48,9 +54,9 @@ impl World {
         } else { None }
     }
     
-    pub fn build_mesh(&self) -> (Vec<Vertex>, Vec<u16>) {
+    pub fn build_mesh(&self) -> (Vec<Vertex>, Vec<u32>) {
         let mut vertices = Vec::new();
-        let mut indices = Vec::new();
+        let mut indices: Vec<u32> = Vec::new();
         let mut index_offset = 0u32;
 
         for (chunk_pos, chunk) in &self.chunks {
@@ -75,21 +81,21 @@ impl World {
                             (chunk_pos.2 * CHUNK_SIZE as i64 + z as i64) as f32,
                         );
                         let directions = [
-                            Vector3::new(0.0, -1.0, 0.0), // left
-                            Vector3::new(0.0, 1.0, 0.0),  // right
-                            Vector3::new(0.0, 0.0, -1.0), // bottom
-                            Vector3::new(0.0, 0.0, 1.0),  // top
-                            Vector3::new(-1.0, 0.0, 0.0), // back
-                            Vector3::new(1.0, 0.0, 0.0),  // front
+                            Vector3::new(1.0, 0.0, 0.0),   // Front
+                            Vector3::new(-1.0, 0.0, 0.0),  // Back
+                            Vector3::new(0.0, 1.0, 0.0),   // Right
+                            Vector3::new(0.0, -1.0, 0.0),  // Left
+                            Vector3::new(0.0, 0.0, 1.0),   // Top
+                            Vector3::new(0.0, 0.0, -1.0),  // Bottom
                         ];
                         for dir in directions {
-                            if self.is_face_exposed(world_pos, dir) {
+                            if !FACE_CULLING || self.is_face_exposed(world_pos, dir) {
                                 let (v, mut i) = generate_voxel_face(
-                                    world_pos, color, dir, block.tex_id
+                                    world_pos, color, dir, block.id
                                 );
                                 
                                 for idx in &mut i {
-                                    *idx += index_offset as u16;
+                                    *idx += index_offset;
                                 }
                                 
                                 index_offset += v.len() as u32;
@@ -111,7 +117,7 @@ impl World {
             (pos.z + dir.z) as i64,
         );
         let chunk = self.get_chunk(&neighbor);
-        if let Some(chunk) = chunk {
+        if let Some(chunk) = chunk && chunk.is_rendered{
             let block = chunk.get_from_world_pos(neighbor);
             block.unwrap_or(Block::air()).is_transpose()
         } else { true }

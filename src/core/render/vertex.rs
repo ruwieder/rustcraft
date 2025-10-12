@@ -78,7 +78,7 @@ pub fn generate_voxel_mesh(voxel_pos: Vector3<f32>, tex_coord: [f32; 2]) -> (Vec
     (vertices, indices)
 }
 
-pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f32>, texture_id: u16) -> (Vec<Vertex>, Vec<u16>) {
+pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f32>, texture_id: u16) -> (Vec<Vertex>, Vec<u32>) {
     const ATLAS_WIDTH: f32 = 1024.0;
     const ATLAS_HEIGHT: f32 = 512.0;
     const TEXTURE_SIZE: f32 = 16.0;
@@ -86,8 +86,9 @@ pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f
     const TEXTURES_PER_COL: f32 = ATLAS_HEIGHT / TEXTURE_SIZE;
     const TEX_SIZE_U: f32 = TEXTURE_SIZE / ATLAS_WIDTH; 
     const TEX_SIZE_V: f32 = TEXTURE_SIZE / ATLAS_HEIGHT;
+    debug_assert!((texture_id as f32) < TEXTURES_PER_COL * TEXTURES_PER_ROW);
     
-    const HALF: f32 = 0.49; // FIXME: should be 0.5 for no gaps
+    const HALF: f32 = 0.5; // FIXME: should be 0.5 for no gaps
     
     let tex_x = (texture_id as f32 % TEXTURES_PER_ROW) * TEX_SIZE_U;
     let tex_y = (texture_id as f32 / TEXTURES_PER_COL) * TEX_SIZE_V;
@@ -125,7 +126,7 @@ pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f
                 Vector3::new(HALF, HALF, HALF),    // top-front-right
                 Vector3::new(-HALF, HALF, HALF),   // top-front-left
             ],
-            [0, 1, 2, 2, 3, 0]
+            [2, 1, 0, 3, 2, 0]
         ),
         Vector3 { x: 0.0, y: -1.0, z: 0.0 } => (
             [
@@ -134,7 +135,7 @@ pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f
                 Vector3::new(-HALF, -HALF, HALF),  // top-back-left
                 Vector3::new(HALF, -HALF, HALF),   // top-back-right
             ],
-            [0, 1, 2, 2, 3, 0]
+            [2, 1, 0, 0, 3, 2]
         ),
         Vector3 { x: 0.0, y: 0.0, z: 1.0 } => (
             [
