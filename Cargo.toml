@@ -13,3 +13,6 @@ futures = "*"
 once_cell = "*"
 image = "*"
 anyhow = "*"
+
+[lints.rust]
+dead_code = "allow"

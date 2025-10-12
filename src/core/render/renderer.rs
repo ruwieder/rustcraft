@@ -226,7 +226,7 @@ impl Renderer {
         let index_count = indices.len() as u32;
         
         let camera = Camera::new(
-            Vector3::new(0.0, 10.0, 0.0),
+            Vector3::new(0.0, 0.0, 10.0),
             Vector2::new(0.0, 0.0),
             config.width as f32 / config.height as f32,
         );
@@ -321,6 +321,10 @@ impl Renderer {
     }
     
     pub fn update_camera(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
+        if  movement.0 == 0.0 && movement.1 == 0.0 && movement.2 == 0.0 
+          && mouse_delta.0 == 0.0 && mouse_delta.1 == 0.0 {
+            return;
+        }
         self.camera.update(dt, movement, mouse_delta);
         let mut uniform = UniformBuffer::default();
         self.camera.update_uniform(&mut uniform);

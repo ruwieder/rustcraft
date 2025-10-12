@@ -43,35 +43,17 @@ impl Camera {
         
         self.rot.y += mouse_delta.0 * rot_speed; // Yaw (left-right)
         self.rot.x += mouse_delta.1 * rot_speed; // Pitch (up-down)
-        
         self.rot.x = self.rot.x.clamp(-PI / 2.0, PI / 2.0);
         self.rot.y = self.rot.y.rem_euclid(PI * 2.0);
         
-        let (sin_yaw, cos_yaw) = (self.rot.y.sin(), self.rot.y.cos());
-        let (sin_pitch, cos_pitch) = (self.rot.x.sin(), self.rot.x.cos());
-        
-        let forward = Vector3::new(
-            sin_yaw * cos_pitch,
-            sin_pitch,
-            -cos_yaw * cos_pitch
-        ).normalize();
-        let right = forward.cross(Vector3::unit_y()).normalize();
-        let up = right.cross(forward).normalize();
+        let (forward, right, up) = self.fru();
         self.pos += forward * movement.0 * speed;
         self.pos += right * movement.1 * speed;
         self.pos += up * movement.2 * speed;
     }
     
     pub fn view_matrix(&self) -> Matrix4<f32> {
-        let pitch = self.rot.x;
-        let yaw = self.rot.y;
-        let forward = Vector3::new(
-            yaw.sin() * pitch.cos(),
-            pitch.sin(),
-            -yaw.cos() * pitch.cos(),
-        ).normalize();
-        let right = forward.cross(Vector3::unit_y()).normalize();
-        let up = right.cross(forward).normalize();
+        let (forward, _, up) = self.fru();
         let pos = Point3::new(self.pos.x, self.pos.y, self.pos.z);
         Matrix4::look_at_rh(pos, pos + forward, up)
     }
@@ -85,11 +67,29 @@ impl Camera {
             };
             Matrix4::from(perspective)
     }
+    
     pub fn update_uniform(&self, uniform: &mut UniformBuffer) {
         let view = self.view_matrix();
         let proj = self.proj_matrix();
         uniform.view_proj = (proj * view).into();
-        // uniform.camera_pos = self.pos.into();
-        uniform.camera_pos = [self.pos.x, self.pos.y, self.pos.z, 1.0];
+        uniform.camera_pos = [self.pos.x, self.pos.y, self.pos.z, 69.0];
+    }
+    
+    pub fn fru(&self) -> (Vector3<f32>, Vector3<f32>, Vector3<f32>) {
+        // forward - right - up
+        let (sin_yaw, cos_yaw) = (self.rot.y.sin(), self.rot.y.cos());
+        let (sin_pitch, cos_pitch) = (self.rot.x.sin(), self.rot.x.cos());
+        let forward = Vector3::new(
+            cos_pitch * cos_yaw,
+            cos_pitch * sin_yaw, 
+            sin_pitch
+        ).normalize();
+        let right = Vector3::new(
+            -sin_yaw,
+            cos_yaw,
+            0.0
+        ).normalize();
+        let up = forward.cross(right).normalize();
+        (forward, right, up)
     }
 }

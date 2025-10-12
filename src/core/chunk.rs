@@ -34,7 +34,7 @@ impl Chunk {
     
     pub const fn index(x: usize, y: usize, z: usize) -> usize {
         debug_assert!(x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE);
-        y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x
+        x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE
     }
     
     pub fn get(&self, x: usize, y: usize, z: usize) -> Option<Block> {

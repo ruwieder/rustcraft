@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Range};
+use std::collections::HashMap;
 use cgmath::Vector3;
 use crate::core::{render::vertex::generate_voxel_face, *};
 
@@ -15,8 +15,8 @@ impl World {
             chunks: HashMap::new(),
         };
         for x in -3..=3 {
-            for z in 0..=0 {
-                world.load_chunks(x, 0, z);
+            for y in 0..=0 {
+                world.load_chunks(x, y, 0);
             }
         }
         world
@@ -27,7 +27,6 @@ impl World {
         if !self.chunks.contains_key(&key) {
             self.chunks.insert(key, 
                 Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_TEX_ID)
-                // Chunk::new_fill(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_TEX_ID)
             );
         };
     }
@@ -76,13 +75,21 @@ impl World {
                             (chunk_pos.2 * CHUNK_SIZE as i64 + z as i64) as f32,
                         );
                         
+                        // let directions = [
+                        //     Vector3::new(-1.0, 0.0, 0.0), // left
+                        //     Vector3::new(1.0, 0.0, 0.0),  // right
+                        //     Vector3::new(0.0, -1.0, 0.0), // bottom
+                        //     Vector3::new(0.0, 1.0, 0.0),  // top
+                        //     Vector3::new(0.0, 0.0, -1.0), // back
+                        //     Vector3::new(0.0, 0.0, 1.0),  // front
+                        // ];
                         let directions = [
-                            Vector3::new(-1.0, 0.0, 0.0), // left
-                            Vector3::new(1.0, 0.0, 0.0),  // right
-                            Vector3::new(0.0, -1.0, 0.0), // bottom
-                            Vector3::new(0.0, 1.0, 0.0),  // top
-                            Vector3::new(0.0, 0.0, -1.0), // back
-                            Vector3::new(0.0, 0.0, 1.0),  // front
+                            Vector3::new(0.0, -1.0, 0.0), // left
+                            Vector3::new(0.0, 1.0, 0.0),  // right
+                            Vector3::new(0.0, 0.0, -1.0), // bottom
+                            Vector3::new(0.0, 0.0, 1.0),  // top
+                            Vector3::new(-1.0, 0.0, 0.0), // back
+                            Vector3::new(1.0, 0.0, 0.0),  // front
                         ];
                         
                         for dir in directions {
@@ -109,7 +116,6 @@ impl World {
     }
     
     fn is_face_exposed(&self, pos: Vector3<f32>, dir: Vector3<f32>) -> bool {
-        // true
         let neighbor = Vector3::new(
             (pos.x + dir.x) as i64,
             (pos.y + dir.y) as i64,
@@ -118,7 +124,6 @@ impl World {
         let chunk = self.get_chunk(&neighbor);
         if let Some(chunk) = chunk {
             let block = chunk.get_from_world_pos(neighbor);
-            // !chunk.is_rendered || block.is_none() || block.unwrap().is_transpose()
             block.unwrap_or(Block::air()).is_transpose()
         } else { true }
     }
