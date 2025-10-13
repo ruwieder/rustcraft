@@ -49,7 +49,8 @@ impl Chunk {
     }
 
     pub fn terrain_gen(world_pos: Vector3<i64>, seed: u32) -> Self {
-        let blocks: [Block; CHUNK_VOLUME] = TerrainGenerator::heightmap(&world_pos, seed);
+        let mut blocks = [Block::air(); CHUNK_VOLUME];
+        TerrainGenerator::heightmap(&world_pos, seed, &mut blocks);
         
         Chunk {
             blocks,

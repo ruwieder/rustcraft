@@ -15,14 +15,10 @@ pub struct Renderer {
     pub surface: Surface<'static>,
     pub config: SurfaceConfiguration,
     pub render_pipeline: RenderPipeline,
-    // pub vertex_buffer: Buffer,
-    // pub index_buffer: Buffer,
-    // pub index_count: u32,
     pub uniform_buffer: Buffer,
     pub uniform_bind_group: BindGroup,
     pub camera: Camera,
     depth_texture: Texture,
-    // pub world: Box<World>,
     pub texture_bind_group: wgpu::BindGroup,
     pub texture: texture::Texture,
 }
@@ -210,28 +206,7 @@ impl Renderer {
             multiview: None,
             cache: None,
         });
-        
-        // let world = World::new();
-        // let (vertices, indices) = if USE_GREEDY {
-        //     world.build_mesh_greedy()
-        // } else {
-        //     world.build_mesh_naive()
-        // };
-        // println!("{} vertices generated", vertices.len());
-        // let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-        //     label: Some("Vertex Buffer"),
-        //     contents: bytemuck::cast_slice(&vertices),
-        //     usage: BufferUsages::VERTEX,
-        // });
-        
-        // let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-        //     label: Some("Index Buffer"),
-        //     contents: bytemuck::cast_slice(&indices),
-        //     usage: BufferUsages::INDEX,
-        // });
-        
-        // let index_count = indices.len() as u32;
-        
+
         let camera = Camera::new(
             Vector3::new(0.0, 0.0, 4.0),
             Vector2::new(0.0, 0.0),
@@ -247,14 +222,10 @@ impl Renderer {
             surface,
             config,
             render_pipeline,
-            // vertex_buffer,
-            // index_buffer,
-            // index_count,
             uniform_buffer,
             uniform_bind_group,
             camera,
             depth_texture,
-            // world: Box::new(world),
             texture_bind_group,
             texture
         }
@@ -340,7 +311,7 @@ impl Renderer {
                     }
                     continue;
                 }
-                if let Some(b) = mesh.index_buffer.as_ref() && b.size() != 0 {
+                if mesh.index_count != 0 {
                     render_pass.set_vertex_buffer(0, mesh.vertex_buffer.as_ref().unwrap().slice(..));
                     render_pass.set_index_buffer(mesh.index_buffer.as_ref().unwrap().slice(..), wgpu::IndexFormat::Uint32);
                     render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);

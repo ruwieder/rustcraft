@@ -15,8 +15,7 @@ const NOISE3D_SCALE: f64 = 20.0;
 const NOISE3D_VALUE: f64 = 0.4;
 
 impl TerrainGenerator {
-    pub fn noise_3d(world_pos: &Vector3<i64>, seed: u32) -> [Block; CHUNK_VOLUME] {
-        let mut blocks = [Block::air(); CHUNK_VOLUME];
+    pub fn noise_3d(world_pos: &Vector3<i64>, seed: u32, blocks: &mut [Block;CHUNK_VOLUME]) {
         let noise_gen = Simplex::new(seed);
         blocks.par_iter_mut().enumerate().for_each(|(i, block)| {
             let (x, y, z) = Chunk::from_index(i);
@@ -35,11 +34,9 @@ impl TerrainGenerator {
                 *block = Block {id: HEIGHTMAP_BLOCK_ID};
             };
         });
-        blocks
     }
     
-    pub fn heightmap(world_pos: &Vector3<i64>, seed: u32) -> [Block; CHUNK_VOLUME] {
-        let mut blocks = [Block::air(); CHUNK_VOLUME];
+    pub fn heightmap(world_pos: &Vector3<i64>, seed: u32, blocks: &mut [Block;CHUNK_VOLUME]) {
         let noise_gen = Simplex::new(seed);
         blocks.par_iter_mut().enumerate().for_each(|(i, block)| {
             let (x, y, z) = Chunk::from_index(i);
@@ -57,6 +54,5 @@ impl TerrainGenerator {
                 *block = Block { id: HEIGHTMAP_BLOCK_ID };
             };
         });
-        blocks
     }
 }

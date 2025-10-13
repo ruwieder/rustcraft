@@ -1,7 +1,7 @@
 use crate::core::{ mesh::Mesh, * };
 use cgmath::Vector3;
 use rand::RngCore;
-use std::{collections::{BTreeMap, HashMap, HashSet, VecDeque}, time::{Duration, Instant}};
+use std::{collections::{BTreeMap, HashSet, VecDeque}, time::{Duration, Instant}};
 
 pub struct World {
     pub chunks: BTreeMap<(i64, i64, i64), Chunk>,
@@ -21,8 +21,9 @@ impl World {
             dirty_chunks: HashSet::new(),
             need_to_load: VecDeque::new(),
         };
-        const LOAD_AREA: usize = 100;
-        const LOAD_DEPTH: usize = 3;
+        const LOAD_AREA: usize = 10;
+        const LOAD_DEPTH: usize = 2;
+
         for x in 0..LOAD_AREA {
             for y in 0..LOAD_AREA {
                 for z in 0..LOAD_DEPTH {
@@ -37,7 +38,7 @@ impl World {
     }
     
     pub fn update(&mut self, has_time: Duration) {
-        const LOAD_RATIO: f64 = 0.5;
+        const LOAD_RATIO: f64 = 0.7;
         self.load_new(
             Duration::from_secs_f64(has_time.as_secs_f64() * LOAD_RATIO)
         );

@@ -16,7 +16,7 @@ pub fn generate_face(
     const TEXTURES_PER_COL: u16 = (ATLAS_HEIGHT / TEXTURE_SIZE) as u16;
     const TEX_SIZE_U: f32 = TEXTURE_SIZE / ATLAS_WIDTH; 
     const TEX_SIZE_V: f32 = TEXTURE_SIZE / ATLAS_HEIGHT;
-    const GAP: f32 = 0.01;
+    const GAP: f32 = 0.00;
     
     let half_width = width * 0.5 - GAP;
     let half_height = height * 0.5 - GAP;
@@ -72,9 +72,9 @@ pub fn generate_face(
         Vector3 { z: -1.0, .. } => {
             vec![
                 Vertex { pos: [pos.x + half_width, pos.y - half_height, pos.z - 0.5], tex_coord: uvs[1] },
-                Vertex { pos: [pos.x - half_width, pos.y - half_height, pos.z - 0.5], tex_coord: uvs[2] },
+                Vertex { pos: [pos.x - half_width, pos.y - half_height, pos.z - 0.5], tex_coord: uvs[0] },
                 Vertex { pos: [pos.x - half_width, pos.y + half_height, pos.z - 0.5], tex_coord: uvs[3] },
-                Vertex { pos: [pos.x + half_width, pos.y + half_height, pos.z - 0.5], tex_coord: uvs[0] },
+                Vertex { pos: [pos.x + half_width, pos.y + half_height, pos.z - 0.5], tex_coord: uvs[2] },
             ]
         },
         _ => Vec::new(),
