@@ -1,17 +1,18 @@
 use crate::core::{
-    render::{face_gen::generate_face, greedy_mesher::GreedyMesher},
-    *,
+    mesh::Mesh, render::{face_gen::generate_face, greedy_mesher::GreedyMesher}, *
 };
 use cgmath::Vector3;
 use rand::RngCore;
-use std::{collections::HashMap, time::Instant};
+use std::{collections::{HashMap, HashSet}, time::Instant};
 
 const DEFAULT_BLOCK_ID: u16 = 20;
 const FACE_CULLING: bool = true;
 
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>,
+    pub meshes: HashMap<(i64, i64, i64), Mesh>,
     pub seed: u32,
+    pub dirty_chunks: HashSet<(i64, i64, i64)>,
 }
 
 impl World {
@@ -19,11 +20,13 @@ impl World {
         let mut rng = rand::thread_rng();
         let mut world = Self {
             chunks: HashMap::new(),
+            meshes: HashMap::new(),
             seed: rng.next_u32(),
+            dirty_chunks: HashSet::new(),
         };
         let time = Instant::now();
-        for x in -80..=80 {
-            for y in -80..=80 {
+        for x in -4..=4 {
+            for y in -4..=4 {
                 for z in 0..=2 {
                     world.load_chunks(x, y, z);
                 }
@@ -36,15 +39,50 @@ impl World {
         // world.load_chunks(1, -1, 0);
         // world.load_chunks(-1, 1, 0);
         // world.load_chunks(1, 1, 0);
+        let now = Instant::now();
+        world.check_and_update();
+        println!("generated {} chunks in {:.2} seconds", world.chunks.len(), (Instant::now() - now).as_secs_f32());
         world
     }
-
+    
+    pub fn update(&mut self) {
+        let updated = self._update_meshes();
+        for k in &updated {
+            self.dirty_chunks.remove(k);
+        };
+    }
+    
+    pub fn check_and_update(&mut self) {
+        self._update_dirty_set();
+        self.update();
+    }
+    
+    pub fn _update_dirty_set(&mut self) {
+        for (key, chunk) in &self.chunks {
+            if chunk.is_dirty {
+                self.dirty_chunks.insert(*key);
+            }
+        }
+    }
+    
+    /// does not updates dirty_set!
+    fn _update_meshes(&mut self) -> HashSet<(i64, i64, i64)> {
+        let mut updated = HashSet::with_capacity(self.dirty_chunks.len());
+        for key in &self.dirty_chunks {
+            let chunk = self.chunks.get(key).unwrap();
+            let (vertices, indices) = chunk.generate_mesh(&self);
+            self.meshes.insert(*key, Mesh::new(vertices, indices));
+            updated.insert(*key);
+        };
+        updated
+    }
+    
     pub fn load_chunks(&mut self, x: i64, y: i64, z: i64) {
         let key = (x, y, z);
-        self.chunks.entry(key).or_insert_with(
-            // || Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_BLOCK_ID)
-            || Chunk::terrain_gen(Vector3::new(x, y, z), self.seed),
-        );
+        let world_pos = Vector3 { x, y, z };
+        self.chunks.entry(key).or_insert(
+            Chunk::terrain_gen(world_pos, self.seed
+        ));
     }
 
     pub fn get_chunk(&self, world_pos: &Vector3<i64>) -> Option<&Chunk> {
@@ -70,7 +108,7 @@ impl World {
         let mut vertices = Vec::new();
         let mut indices: Vec<u32> = Vec::new();
         let mut index_offset = 0u32;
-
+        
         for (chunk_pos, chunk) in &self.chunks {
             for x in 0..CHUNK_SIZE {
                 for y in 0..CHUNK_SIZE {
@@ -118,31 +156,46 @@ impl World {
 
     pub fn build_mesh_greedy(&self) -> (Vec<Vertex>, Vec<u32>) {
         let mut vertices = Vec::new();
-        let mut indices = Vec::new();
+        let mut indices: Vec<u32> = Vec::new();
         let mut index_offset = 0u32;
-        let time = Instant::now();
-        for (chunk_pos, chunk) in &self.chunks {
-            if !chunk.is_rendered {
-                continue;
+        
+        for (_, mesh) in &self.meshes {
+            vertices.extend_from_slice(mesh.vertices.as_slice());
+            let v = mesh.indices.clone();
+            for v in v {
+                indices.push(v + index_offset);
             }
-            let chunk_vertices = GreedyMesher::build_mesh(chunk, self);
-            let vertex_count = chunk_vertices.0.len();
-            // Transform vertices to world coordinates
-            for mut vertex in chunk_vertices.0 {
-                vertex.pos[0] += chunk_pos.0 as f32 * CHUNK_SIZE as f32;
-                vertex.pos[1] += chunk_pos.1 as f32 * CHUNK_SIZE as f32;
-                vertex.pos[2] += chunk_pos.2 as f32 * CHUNK_SIZE as f32;
-                vertices.push(vertex);
-            }
-
-            for index in chunk_vertices.1 {
-                indices.push(index + index_offset);
-            }
-
-            index_offset += vertex_count as u32;
-        }
-        println!("generated mesh in {:.2} seconds", (Instant::now() - time).as_secs_f32());
+            // indices.extend_from_slice(mesh.indices.as_slice());
+            index_offset += mesh.vertices.len() as u32;
+        };
         (vertices, indices)
+    
+    //     let mut vertices = Vec::new();
+    //     let mut indices = Vec::new();
+    //     let mut index_offset = 0u32;
+    //     let time = Instant::now();
+    //     for (chunk_pos, chunk) in &self.chunks {
+    //         if !chunk.is_rendered {
+    //             continue;
+    //         }
+    //         let chunk_vertices = GreedyMesher::build_mesh(chunk, self);
+    //         let vertex_count = chunk_vertices.0.len();
+    //         // Transform vertices to world coordinates
+    //         for mut vertex in chunk_vertices.0 {
+    //             vertex.pos[0] += chunk_pos.0 as f32 * CHUNK_SIZE as f32;
+    //             vertex.pos[1] += chunk_pos.1 as f32 * CHUNK_SIZE as f32;
+    //             vertex.pos[2] += chunk_pos.2 as f32 * CHUNK_SIZE as f32;
+    //             vertices.push(vertex);
+    //         }
+
+    //         for index in chunk_vertices.1 {
+    //             indices.push(index + index_offset);
+    //         }
+
+    //         index_offset += vertex_count as u32;
+    //     }
+    //     println!("generated mesh in {:.2} seconds", (Instant::now() - time).as_secs_f32());
+    //     (vertices, indices)
     }
 
     pub fn is_face_exposed(&self, pos: Vector3<f32>, dir: Vector3<f32>) -> bool {
