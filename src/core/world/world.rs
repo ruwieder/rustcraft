@@ -1,4 +1,4 @@
-use crate::core::{ mesh::Mesh, * };
+use crate::core::{ mesh::Mesh, render::renderer::Renderer, * };
 use cgmath::Vector3;
 use rand::RngCore;
 use std::{collections::{BTreeMap, HashSet, VecDeque}, time::{Duration, Instant}};
@@ -37,12 +37,12 @@ impl World {
         world
     }
     
-    pub fn update(&mut self, has_time: Duration) {
+    pub fn update(&mut self, has_time: Duration, renderer: &mut Renderer) {
         const LOAD_RATIO: f64 = 0.7;
         self.load_new(
             Duration::from_secs_f64(has_time.as_secs_f64() * LOAD_RATIO)
         );
-        self.update_meshes();
+        self.update_meshes(renderer);
     }
     
     pub fn load_new(&mut self, has_time: Duration) {
@@ -93,7 +93,7 @@ impl World {
         }
     }
     
-    fn update_meshes(&mut self) {
+    fn update_meshes(&mut self, renderer: &mut Renderer) {
         let durty_chunks = std::mem::take(&mut self.dirty_chunks);
         for key in durty_chunks {
             let chunk = self.chunks.get(&key).unwrap();
@@ -106,6 +106,8 @@ impl World {
                 let mesh = Mesh::new(vertices, indices);
                 self.meshes.insert(key, mesh);
             }
+            
+            renderer.on_mesh_updated(key);
             
             self.chunks.get_mut(&key).unwrap().is_dirty = false;
         };

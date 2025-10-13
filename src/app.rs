@@ -155,14 +155,9 @@ impl ApplicationHandler for App {
                 let now = Instant::now();
                 let delta_time = now.duration_since(self.last_time).as_secs_f64();
                 self.last_time = now;
-                self.world.update(Duration::from_secs_f32(0.5 / 60.0));
-                let mut _r = self.renderer.as_mut().unwrap();
-                for mesh in self.world.meshes.values_mut() {
-                    if mesh.is_dirty {
-                        _r.update_mesh_buffers(mesh);
-                    }
-                }
-                _r.update_camera(
+                let mut renderer = self.renderer.as_mut().unwrap();
+                self.world.update(Duration::from_secs_f32(0.5 / 60.0), &mut renderer);
+                renderer.update_camera(
                     delta_time,
                     (
                         if self.movement.forward { 1.0 } else if self.movement.backward { -1.0 } else { 0.0 },
@@ -172,9 +167,9 @@ impl ApplicationHandler for App {
                     (0.0, 0.0),
                 );
                 // renderer.new_render(&self.world);
-                match _r.new_render(&self.world) {
+                match renderer.render(&self.world) {
                     Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost) => _r.resize(window.inner_size()),
+                    Err(wgpu::SurfaceError::Lost) => renderer.resize(window.inner_size()),
                     Err(wgpu::SurfaceError::OutOfMemory) => {
                         log::error!("wgpu::SurfaceError::OutOfMemory");
                         event_loop.exit();
