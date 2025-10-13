@@ -18,7 +18,7 @@ pub fn generate_face(
     const TEXTURES_PER_COL: u16 = (ATLAS_HEIGHT / TEXTURE_SIZE) as u16;
     const TEX_SIZE_U: f32 = TEXTURE_SIZE / ATLAS_WIDTH; 
     const TEX_SIZE_V: f32 = TEXTURE_SIZE / ATLAS_HEIGHT;
-    const GAP: f32 = 0.01;
+    const GAP: f32 = -0.0001;
     
     let half_width = width * 0.5 - GAP;
     let half_height = height * 0.5 - GAP;

@@ -35,8 +35,7 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let texture_color = textureSample(texture_atlas, texture_sampler, in.tex_coords);
     // return vec4<f32>(in.tex_coords, 0.0, 1.0); // UVs
     // return vec4<f32>(in.color, 1.0); // vertex colors
-    return texture_color; // texture sampling
+    return textureSample(texture_atlas, texture_sampler, in.tex_coords); // texture sampling
 }

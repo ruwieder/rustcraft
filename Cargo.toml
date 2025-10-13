@@ -13,6 +13,9 @@ futures = "*"
 once_cell = "*"
 image = "*"
 anyhow = "*"
+noise = "*"
+rand = "*"
+rayon = "*"
 
 [lints.rust]
 dead_code = "allow"

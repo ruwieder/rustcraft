@@ -1,25 +1,36 @@
-use std::collections::HashMap;
+use crate::core::{
+    render::{face_gen::generate_face, greedy_mesher::GreedyMesher},
+    *,
+};
 use cgmath::Vector3;
-use crate::core::{render::{face_gen::generate_face, greedy_mesher::GreedyMesher}, *};
+use rand::RngCore;
+use std::{collections::HashMap, time::Instant};
 
 const DEFAULT_COLOR: (u8, u8, u8) = (255, 0, 255);
 const DEFAULT_BLOCK_ID: u16 = 20;
 const FACE_CULLING: bool = true;
 
 pub struct World {
-    pub chunks: HashMap<(i64, i64, i64), Chunk>
+    pub chunks: HashMap<(i64, i64, i64), Chunk>,
+    pub seed: u32,
 }
 
 impl World {
     pub fn new() -> Self {
-        let mut world = Self{
+        let mut rng = rand::thread_rng();
+        let mut world = Self {
             chunks: HashMap::new(),
+            seed: rng.next_u32(),
         };
-        for x in -10..=10 {
-            for y in -10..=10 {
-                world.load_chunks(x, y, 0);
+        let time = Instant::now();
+        for x in -50..=50 {
+            for y in -50..=50 {
+                for z in 0..=1 {
+                    world.load_chunks(x, y, z);
+                }
             }
         }
+        println!("chunk loading: {:.2} seconds", (Instant::now() - time).as_secs_f32());
         // world.load_chunks(0, 0, 0);
         // world.load_chunks(1, 0, 0);
         // world.load_chunks(-1, -1, 0);
@@ -28,14 +39,15 @@ impl World {
         // world.load_chunks(1, 1, 0);
         world
     }
-    
+
     pub fn load_chunks(&mut self, x: i64, y: i64, z: i64) {
         let key = (x, y, z);
         self.chunks.entry(key).or_insert_with(
-            || Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_BLOCK_ID)
+            // || Chunk::new_flat(Vector3::new(x, y, z), DEFAULT_COLOR, DEFAULT_BLOCK_ID)
+            || Chunk::terrain_gen(Vector3::new(x, y, z), self.seed),
         );
     }
-    
+
     pub fn get_chunk(&self, world_pos: &Vector3<i64>) -> Option<&Chunk> {
         let chunk_idx = (
             world_pos.x.div_euclid(CHUNK_SIZE as i64),
@@ -44,15 +56,17 @@ impl World {
         );
         self.chunks.get(&chunk_idx)
     }
-    
+
     pub fn get_block(&self, world_pos: Vector3<i64>) -> Option<Block> {
         let chunk = self.get_chunk(&world_pos);
-        
+
         if let Some(chunk) = chunk {
             chunk.get_from_world_pos(world_pos)
-        } else { None }
+        } else {
+            None
+        }
     }
-    
+
     pub fn build_mesh_naive(&self) -> (Vec<Vertex>, Vec<u32>) {
         let mut vertices = Vec::new();
         let mut indices: Vec<u32> = Vec::new();
@@ -64,43 +78,42 @@ impl World {
                     for z in 0..CHUNK_SIZE {
                         let idx = Chunk::index(x, y, z);
                         let block = chunk.blocks[idx];
-                        
-                        if block.is_transpose() { 
-                            continue; 
+
+                        if block.is_transpose() {
+                            continue;
                         }
-                        
+
                         let color = [
                             block.color.0 as f32 / 255.0,
                             block.color.1 as f32 / 255.0,
                             block.color.2 as f32 / 255.0,
                         ];
-                        
+
                         let world_pos = Vector3::new(
                             (chunk_pos.0 * CHUNK_SIZE as i64 + x as i64) as f32,
-                            (chunk_pos.1 * CHUNK_SIZE as i64 + y as i64) as f32, 
+                            (chunk_pos.1 * CHUNK_SIZE as i64 + y as i64) as f32,
                             (chunk_pos.2 * CHUNK_SIZE as i64 + z as i64) as f32,
                         );
                         let directions = [
-                            Vector3::new(1.0, 0.0, 0.0),   // Front
-                            Vector3::new(-1.0, 0.0, 0.0),  // Back
-                            Vector3::new(0.0, 1.0, 0.0),   // Right
-                            Vector3::new(0.0, -1.0, 0.0),  // Left
-                            Vector3::new(0.0, 0.0, 1.0),   // Top
-                            Vector3::new(0.0, 0.0, -1.0),  // Bottom
+                            Vector3::new(1.0, 0.0, 0.0),  // Front
+                            Vector3::new(-1.0, 0.0, 0.0), // Back
+                            Vector3::new(0.0, 1.0, 0.0),  // Right
+                            Vector3::new(0.0, -1.0, 0.0), // Left
+                            Vector3::new(0.0, 0.0, 1.0),  // Top
+                            Vector3::new(0.0, 0.0, -1.0), // Bottom
                         ];
                         for dir in directions {
                             if !FACE_CULLING || self.is_face_exposed(world_pos, dir) {
                                 // let (v, mut i) = generate_voxel_face(
                                 //     world_pos, color, dir, block.id
                                 // );
-                                let (v, mut i) = generate_face(
-                                    world_pos, color, dir, block.id, 1.0, 1.0
-                                );
-                                
+                                let (v, mut i) =
+                                    generate_face(world_pos, color, dir, block.id, 1.0, 1.0);
+
                                 for idx in &mut i {
                                     *idx += index_offset;
                                 }
-                                
+
                                 index_offset += v.len() as u32;
                                 vertices.extend(v);
                                 indices.extend(i);
@@ -112,7 +125,7 @@ impl World {
         }
         (vertices, indices)
     }
-    
+
     pub fn build_mesh_greedy(&self) -> (Vec<Vertex>, Vec<u32>) {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
@@ -141,7 +154,7 @@ impl World {
 
         (vertices, indices)
     }
-    
+
     pub fn is_face_exposed(&self, pos: Vector3<f32>, dir: Vector3<f32>) -> bool {
         let neighbor = Vector3::new(
             (pos.x + dir.x) as i64,
@@ -149,9 +162,13 @@ impl World {
             (pos.z + dir.z) as i64,
         );
         let chunk = self.get_chunk(&neighbor);
-        if let Some(chunk) = chunk && chunk.is_rendered{
+        if let Some(chunk) = chunk
+            && chunk.is_rendered
+        {
             let block = chunk.get_from_world_pos(neighbor);
             block.unwrap_or(Block::air()).is_transpose()
-        } else { true }
+        } else {
+            true
+        }
     }
 }
