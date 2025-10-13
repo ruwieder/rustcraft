@@ -22,8 +22,8 @@ impl Chunk {
         }
     }
 
-    pub fn new_fill(pos: Vector3<i64>, color: (u8, u8, u8), block_id: u16) -> Self {
-        let blocks = [Block::new(color, block_id); CHUNK_VOLUME];
+    pub fn new_fill(pos: Vector3<i64>, block_id: u16) -> Self {
+        let blocks = [Block::new(block_id); CHUNK_VOLUME];
         Chunk {
             blocks,
             _pos: pos,
@@ -31,13 +31,11 @@ impl Chunk {
         }
     }
 
-    pub fn new_flat(pos: Vector3<i64>, color: (u8, u8, u8), block_id: u16) -> Self {
+    pub fn new_flat(pos: Vector3<i64>, block_id: u16) -> Self {
         let mut blocks = [Block::air(); CHUNK_VOLUME];
         for block in blocks.iter_mut().take(CHUNK_SIZE * CHUNK_SIZE) {
-            block.color = color;
             block.id = block_id;
         }
-        blocks[CHUNK_SIZE * CHUNK_SIZE + 1].color = color;
         blocks[CHUNK_SIZE * CHUNK_SIZE + 1].id = block_id;
         Chunk {
             blocks,

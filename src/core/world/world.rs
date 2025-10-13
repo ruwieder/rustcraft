@@ -6,7 +6,6 @@ use cgmath::Vector3;
 use rand::RngCore;
 use std::{collections::HashMap, time::Instant};
 
-const DEFAULT_COLOR: (u8, u8, u8) = (255, 0, 255);
 const DEFAULT_BLOCK_ID: u16 = 20;
 const FACE_CULLING: bool = true;
 
@@ -23,9 +22,9 @@ impl World {
             seed: rng.next_u32(),
         };
         let time = Instant::now();
-        for x in -50..=50 {
-            for y in -50..=50 {
-                for z in 0..=1 {
+        for x in -80..=80 {
+            for y in -80..=80 {
+                for z in 0..=2 {
                     world.load_chunks(x, y, z);
                 }
             }
@@ -83,12 +82,6 @@ impl World {
                             continue;
                         }
 
-                        let color = [
-                            block.color.0 as f32 / 255.0,
-                            block.color.1 as f32 / 255.0,
-                            block.color.2 as f32 / 255.0,
-                        ];
-
                         let world_pos = Vector3::new(
                             (chunk_pos.0 * CHUNK_SIZE as i64 + x as i64) as f32,
                             (chunk_pos.1 * CHUNK_SIZE as i64 + y as i64) as f32,
@@ -104,11 +97,8 @@ impl World {
                         ];
                         for dir in directions {
                             if !FACE_CULLING || self.is_face_exposed(world_pos, dir) {
-                                // let (v, mut i) = generate_voxel_face(
-                                //     world_pos, color, dir, block.id
-                                // );
                                 let (v, mut i) =
-                                    generate_face(world_pos, color, dir, block.id, 1.0, 1.0);
+                                    generate_face(world_pos, dir, block.id, 1.0, 1.0);
 
                                 for idx in &mut i {
                                     *idx += index_offset;
@@ -130,7 +120,7 @@ impl World {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
         let mut index_offset = 0u32;
-
+        let time = Instant::now();
         for (chunk_pos, chunk) in &self.chunks {
             if !chunk.is_rendered {
                 continue;
@@ -151,7 +141,7 @@ impl World {
 
             index_offset += vertex_count as u32;
         }
-
+        println!("generated mesh in {:.2} seconds", (Instant::now() - time).as_secs_f32());
         (vertices, indices)
     }
 

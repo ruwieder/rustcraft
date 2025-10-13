@@ -124,7 +124,7 @@ impl Renderer {
             source: ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
         
-        let diffuse_bytes = include_bytes!("../../../assets/textures/minecraft_block_atlas.png");
+        let diffuse_bytes = include_bytes!("../../../assets/textures/stone.png");
         let texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "atlas.png").unwrap();
             
         let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {

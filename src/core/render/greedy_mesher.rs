@@ -1,14 +1,11 @@
 use cgmath::Vector3;
+use rayon::prelude::*;
 use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE}, render::{face_gen::generate_face, vertex::Vertex}, world::world::World};
 
 pub struct GreedyMesher;
 
 impl GreedyMesher {
     pub fn build_mesh(chunk: &Chunk, world: &World) -> (Vec<Vertex>, Vec<u32>) {
-        let mut vertices = Vec::new();
-        let mut indices = Vec::new();
-        let mut index_offset = 0u32;
-        
         let normals = [
             Vector3::new(1.0, 0.0, 0.0), 
             Vector3::new(-1.0, 0.0, 0.0),
@@ -18,21 +15,42 @@ impl GreedyMesher {
             Vector3::new(0.0, 0.0, -1.0),
         ];
         
-        for &normal in &normals {
-            Self::greedy_mesh_direction(chunk, world, normal, &mut vertices, &mut indices, &mut index_offset);
+        // Process each direction in parallel
+        let direction_results: Vec<(Vec<Vertex>, Vec<u32>)> = normals
+            .par_iter()
+            .map(|&normal| {
+                Self::greedy_mesh_direction_parallel(chunk, world, normal)
+            })
+            .collect();
+
+        // Combine results from all directions
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+        let mut index_offset = 0u32;
+
+        for (dir_vertices, dir_indices) in direction_results {
+            vertices.extend(dir_vertices);
+            
+            // Adjust indices with current offset
+            for index in dir_indices {
+                indices.push(index + index_offset);
+            }
+            
+            // Update offset based on number of vertices added
+            index_offset = vertices.len() as u32;
         }
 
         (vertices, indices)
     }
 
-    fn greedy_mesh_direction(
+    fn greedy_mesh_direction_parallel(
         chunk: &Chunk,
         world: &World,
         normal: Vector3<f32>,
-        vertices: &mut Vec<Vertex>,
-        indices: &mut Vec<u32>,
-        index_offset: &mut u32,
-    ) {
+    ) -> (Vec<Vertex>, Vec<u32>) {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+        let mut index_offset = 0u32;
         let mut visited = [[[false; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
 
         // Determine which dimension is the "depth" (the one we're looking at)
@@ -89,9 +107,9 @@ impl GreedyMesher {
                             u_axis,
                             v_axis,
                             depth_axis,
-                            vertices,
-                            indices,
-                            index_offset,
+                            &mut vertices,
+                            &mut indices,
+                            &mut index_offset,
                         );
 
                         // Mark the entire quad as visited
@@ -108,7 +126,11 @@ impl GreedyMesher {
                 }
             }
         }
+
+        (vertices, indices)
     }
+
+    // The rest of the methods (find_quad, create_greedy_quad, get_position) remain unchanged
     #[allow(clippy::too_many_arguments)]
     fn find_quad(
         chunk: &Chunk,
@@ -186,6 +208,7 @@ impl GreedyMesher {
 
         (quad_width, quad_height)
     }
+
     #[allow(clippy::too_many_arguments)]
     fn create_greedy_quad(
         normal: Vector3<f32>,
@@ -202,12 +225,6 @@ impl GreedyMesher {
         indices: &mut Vec<u32>,
         index_offset: &mut u32,
     ) {
-        let color = [
-            block.color.0 as f32 / 255.0,
-            block.color.1 as f32 / 255.0,
-            block.color.2 as f32 / 255.0,
-        ];
-
         let base_pos = Self::get_position(u_axis, v_axis, depth_axis, depth, u, v);
         
         // Adjust position to be the center of the quad
@@ -222,7 +239,6 @@ impl GreedyMesher {
 
         let (quad_vertices, quad_indices) = generate_face(
             center_pos,
-            color,
             normal,
             block.id,
             quad_width as f32,

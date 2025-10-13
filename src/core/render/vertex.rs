@@ -6,12 +6,11 @@ use wgpu::VertexFormat;
 pub struct Vertex {
     pub pos: [f32; 3],
     pub tex_coord: [f32; 2],
-    pub color: [f32; 3],    // keep for now for fallback
 }
 
 impl Vertex {
     pub const fn new(pos: [f32; 3], tex_coord: [f32; 2]) -> Self {
-        Self { pos, tex_coord, color: [1.0, 0.0, 1.0]}
+        Self { pos, tex_coord }
     }
     
     pub const fn desc() -> wgpu::VertexBufferLayout<'static> {
@@ -29,12 +28,6 @@ impl Vertex {
                     // offset: 12 as wgpu::BufferAddress,
                     shader_location: 1,
                     format: VertexFormat::Float32x2
-                },
-                wgpu::VertexAttribute { // color
-                    offset: (size_of::<[f32; 3]>() + size_of::<[f32; 2]>()) as wgpu::BufferAddress,
-                    // offset: (12+12) as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: VertexFormat::Float32x3,
                 },
             ]
         }
@@ -80,7 +73,7 @@ pub fn generate_voxel_mesh(voxel_pos: Vector3<f32>, tex_coord: [f32; 2]) -> (Vec
 }
 */
 
-pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f32>, texture_id: u16) -> (Vec<Vertex>, Vec<u32>) {
+pub fn generate_voxel_face(pos: Vector3<f32>, normal: Vector3<f32>, texture_id: u16) -> (Vec<Vertex>, Vec<u32>) {
     const ATLAS_WIDTH: f32 = 1024.0;
     const ATLAS_HEIGHT: f32 = 512.0;
     const TEXTURE_SIZE: f32 = 16.0;
@@ -170,7 +163,6 @@ pub fn generate_voxel_face(pos: Vector3<f32>, color: [f32; 3], normal: Vector3<f
         vertices.push(Vertex {
             pos: [pos.x + position.x, pos.y + position.y, pos.z + position.z],
             tex_coord: uvs[i],
-            color,
         });
     }
     

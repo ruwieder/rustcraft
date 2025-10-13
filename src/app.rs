@@ -145,6 +145,9 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(size) => {
                 renderer.resize(size);
             }
+            WindowEvent::CloseRequested => {
+                event_loop.exit();
+            }
             WindowEvent::RedrawRequested => {
                 let now = Instant::now();
                 let delta_time = now.duration_since(self.last_time).as_secs_f64();

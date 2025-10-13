@@ -5,11 +5,9 @@ use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE, CHUNK_VOLUME}};
 
 pub struct TerrainGenerator;
 
-const DEFAULT_COLOR: (u8, u8, u8) = (255, 255, 0);
-
-const HEIGHTMAP_BLOCK_ID: u16 = 15;
-const HEIGHTMAP_SCALE_XY: f64 = 50.0;
-const HEIGHTMAP_SCALE_Z: f64 = (CHUNK_SIZE*1) as f64;
+const HEIGHTMAP_BLOCK_ID: u16 = 0;
+const HEIGHTMAP_SCALE_XY: f64 = 400.0;
+const HEIGHTMAP_SCALE_Z: f64 = (CHUNK_SIZE*2) as f64;
 const HEIGHTMAP_MAX: f64 = 1.0;
 const HEIGHTMAP_MIN: f64 = 0.2;
 
@@ -34,7 +32,7 @@ impl TerrainGenerator {
             ]) + 1.0) / 2.0;
             
             if value > NOISE3D_VALUE {
-                *block = Block {color: DEFAULT_COLOR, id: HEIGHTMAP_BLOCK_ID};
+                *block = Block {id: HEIGHTMAP_BLOCK_ID};
             };
         });
         blocks
@@ -56,7 +54,7 @@ impl TerrainGenerator {
             ]) + 1.0) / 2.0 * HEIGHTMAP_MAX;
             
             if (global_pos.z as f64) < value * HEIGHTMAP_SCALE_Z + HEIGHTMAP_MIN {
-                *block = Block {color: DEFAULT_COLOR, id: HEIGHTMAP_BLOCK_ID};
+                *block = Block { id: HEIGHTMAP_BLOCK_ID };
             };
         });
         blocks
