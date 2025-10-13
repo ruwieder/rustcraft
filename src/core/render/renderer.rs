@@ -1,12 +1,13 @@
 use wgpu::*;
 use wgpu::util::DeviceExt;
 use cgmath::{Vector2, Vector3};
-use crate::core::render::{texture, camera::{Camera, UniformBuffer}};
+use crate::core::{mesh::Mesh, render::{camera::{Camera, UniformBuffer}, texture}};
 use crate::core::World;
 use crate::core::Vertex;
 
 const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 1.0, a: 1.0 };
 const USE_GREEDY: bool = true;
+const RENDER_LOGGING: bool = cfg!(debug_assertions);
 
 pub struct Renderer {
     pub device: Device,
@@ -14,26 +15,26 @@ pub struct Renderer {
     pub surface: Surface<'static>,
     pub config: SurfaceConfiguration,
     pub render_pipeline: RenderPipeline,
-    pub vertex_buffer: Buffer,
-    pub index_buffer: Buffer,
-    pub index_count: u32,
+    // pub vertex_buffer: Buffer,
+    // pub index_buffer: Buffer,
+    // pub index_count: u32,
     pub uniform_buffer: Buffer,
     pub uniform_bind_group: BindGroup,
     pub camera: Camera,
     depth_texture: Texture,
-    pub world: Box<World>,
+    // pub world: Box<World>,
     pub texture_bind_group: wgpu::BindGroup,
     pub texture: texture::Texture,
 }
 
 impl Renderer {
     pub async fn new(window: &'static winit::window::Window) -> Self {
+        log::debug!("started renderer initializatioin...");
         let instance = Instance::new(&InstanceDescriptor {
             backends: Backends::PRIMARY,
             ..Default::default()
         });
         let surface = instance.create_surface(window).unwrap();
-        
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
                 power_preference: PowerPreference::HighPerformance,
@@ -185,7 +186,7 @@ impl Renderer {
                 compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
                     format: config.format,
-                    blend: Some(BlendState::ALPHA_BLENDING),
+                    blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 })],
             }),
@@ -210,26 +211,26 @@ impl Renderer {
             cache: None,
         });
         
-        let world = World::new();
-        let (vertices, indices) = if USE_GREEDY {
-            world.build_mesh_greedy()
-        } else {
-            world.build_mesh_naive()
-        };
-        println!("{} vertices generated", vertices.len());
-        let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: BufferUsages::VERTEX,
-        });
+        // let world = World::new();
+        // let (vertices, indices) = if USE_GREEDY {
+        //     world.build_mesh_greedy()
+        // } else {
+        //     world.build_mesh_naive()
+        // };
+        // println!("{} vertices generated", vertices.len());
+        // let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
+        //     label: Some("Vertex Buffer"),
+        //     contents: bytemuck::cast_slice(&vertices),
+        //     usage: BufferUsages::VERTEX,
+        // });
         
-        let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(&indices),
-            usage: BufferUsages::INDEX,
-        });
+        // let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
+        //     label: Some("Index Buffer"),
+        //     contents: bytemuck::cast_slice(&indices),
+        //     usage: BufferUsages::INDEX,
+        // });
         
-        let index_count = indices.len() as u32;
+        // let index_count = indices.len() as u32;
         
         let camera = Camera::new(
             Vector3::new(0.0, 0.0, 4.0),
@@ -239,21 +240,21 @@ impl Renderer {
         
         let uniform = camera.get_uniform();
         queue.write_buffer(&uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
-        
+        log::debug!("renderer initialized");
         Self {
             device,
             queue,
             surface,
             config,
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
-            index_count,
+            // vertex_buffer,
+            // index_buffer,
+            // index_count,
             uniform_buffer,
             uniform_bind_group,
             camera,
             depth_texture,
-            world: Box::new(world),
+            // world: Box::new(world),
             texture_bind_group,
             texture
         }
@@ -282,52 +283,124 @@ impl Renderer {
         });
     }
     
-    pub fn render(&mut self) -> Result<(), SurfaceError> {
-        let frame = self.surface.get_current_texture()?;
-        let view = frame.texture.create_view(&TextureViewDescriptor::default());
-        let depth_view = self.depth_texture.create_view(&TextureViewDescriptor::default());
-
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
+    pub fn new_render(&self, world: &World) -> Result<(), SurfaceError> {
+        if RENDER_LOGGING {log::trace!("started render...");}
+        let output = self.surface.get_current_texture()?;
+        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let depth_view = self.depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+    
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
-        
+
         {
-            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(SKYBOX),
-                        store: StoreOp::Store,
-                    },
                     depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(SKYBOX), // Use your skybox color
+                        store: wgpu::StoreOp::Store,
+                    },
                 })],
-                depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &depth_view,
-                    depth_ops: Some(Operations {
-                        load: LoadOp::Clear(1.0),
-                        store: StoreOp::Store,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
                 occlusion_query_set: None,
+                timestamp_writes: None,
             });
-            
+    
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
             render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
-            render_pass.draw_indexed(0..self.index_count, 0, 0..1);
+            
+            let mut count_rendered = 0;
+            for (key, mesh) in &world.meshes {
+                
+                let chunk = world.chunks.get(key);
+                if chunk.is_none() || chunk.unwrap().is_dirty {
+                    if RENDER_LOGGING {
+                        log::trace!("chunk at {key:?} skipped: (is_none: {})", chunk.is_none());
+                    }
+                    continue;
+                }
+                if mesh.vertex_buffer.is_none() || mesh.index_buffer.is_none() {
+                    if RENDER_LOGGING {
+                        log::trace!(
+                            "mesh at {key:?} skipped: (vertex_buffer.is_none: {}, index_buffer.is_none: {})",
+                            mesh.vertex_buffer.is_none(), mesh.index_buffer.is_none()
+                        );
+                    }
+                    continue;
+                }
+                if let Some(b) = mesh.index_buffer.as_ref() && b.size() != 0 {
+                    render_pass.set_vertex_buffer(0, mesh.vertex_buffer.as_ref().unwrap().slice(..));
+                    render_pass.set_index_buffer(mesh.index_buffer.as_ref().unwrap().slice(..), wgpu::IndexFormat::Uint32);
+                    render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                    count_rendered += 1;
+                }
+            }
+            if RENDER_LOGGING {log::trace!("rendered {count_rendered} meshes");}
         }
-        
-        self.queue.submit(std::iter::once(encoder.finish()));
-        frame.present();
-        
+    
+        self.queue.submit(std::iter::once(encoder.finish()));        
+        output.present();
+        if RENDER_LOGGING {log::trace!("render pass done");}
         Ok(())
-    }
+    }    
+    // pub fn render(&mut self) -> Result<(), SurfaceError> {
+    //     let frame = self.surface.get_current_texture()?;
+    //     let view = frame.texture.create_view(&TextureViewDescriptor::default());
+    //     let depth_view = self.depth_texture.create_view(&TextureViewDescriptor::default());
+
+    //     let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
+    //         label: Some("Render Encoder"),
+    //     });
+        
+    //     {
+    //         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+    //             label: Some("Render Pass"),
+    //             color_attachments: &[Some(RenderPassColorAttachment {
+    //                 view: &view,
+    //                 resolve_target: None,
+    //                 ops: Operations {
+    //                     load: LoadOp::Clear(SKYBOX),
+    //                     store: StoreOp::Store,
+    //                 },
+    //                 depth_slice: None,
+    //             })],
+    //             depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+    //                 view: &depth_view,
+    //                 depth_ops: Some(Operations {
+    //                     load: LoadOp::Clear(1.0),
+    //                     store: StoreOp::Store,
+    //                 }),
+    //                 stencil_ops: None,
+    //             }),
+    //             timestamp_writes: None,
+    //             occlusion_query_set: None,
+    //         });
+            
+    //         render_pass.set_pipeline(&self.render_pipeline);
+    //         render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+    //         render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
+    //         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+    //         render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
+    //         render_pass.draw_indexed(0..self.index_count, 0, 0..1);
+    //     }
+        
+    //     self.queue.submit(std::iter::once(encoder.finish()));
+    //     frame.present();
+        
+    //     Ok(())
+    // }
     
     pub fn update_camera(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
         if  movement.0 == 0.0 && movement.1 == 0.0 && movement.2 == 0.0 
@@ -339,28 +412,37 @@ impl Renderer {
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
     }
     
-    pub fn update_mesh(&mut self) {
-        let (vertices, indices) = self.world.build_mesh_naive();
+    pub fn update_mesh_buffers(&self, mesh: &mut Mesh) {
+        if !mesh.is_dirty {
+            return;
+        };
         
-        self.vertex_buffer = self.device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: BufferUsages::VERTEX,
-        });
-        
-        self.index_buffer = self.device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(&indices),
-            usage: BufferUsages::INDEX,
-        });
-        
-        self.index_count = indices.len() as u32;
+        mesh.vertex_buffer = Some(self.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some(&format!("Vertex Buffer")),
+                contents: bytemuck::cast_slice(&mesh.vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            }
+        ));
+        mesh.index_buffer = Some(self.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some(&format!("Index Buffer")),
+                contents: bytemuck::cast_slice(&mesh.indices),
+                usage: wgpu::BufferUsages::INDEX,
+            }
+        ));
+        mesh.index_count = mesh.indices.len() as u32;
+        mesh.is_dirty = false;
+        #[cfg(debug_assertions)]
+        log::trace!("loaded chunk mesh buffers of {} indices", mesh.index_count);
     }
 }
 
 impl Drop for Renderer {
     fn drop(&mut self) {
         // Wait for the GPU to finish all work before dropping resources
-        let _ = self.device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None });
+        log::info!("dropping renderer...");
+        let _ = self.device.poll(wgpu::PollType::Poll);
+        log::info!("done");
     }
 }

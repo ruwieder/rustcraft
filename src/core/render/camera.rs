@@ -38,7 +38,7 @@ impl Camera {
     }
     
     pub fn update(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
-        let speed = 8.0 * dt as f32;
+        let speed = 20.0 * dt as f32;
         let rot_speed = 0.15 * dt as f32;
         
         self.rot.y += mouse_delta.0 * rot_speed; // Yaw (left-right)

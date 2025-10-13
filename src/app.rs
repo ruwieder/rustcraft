@@ -8,6 +8,7 @@ use std::time::Instant;
 use futures::executor::block_on;
 
 use crate::core::render::renderer::Renderer;
+use crate::core::world::world::World;
 
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
@@ -31,6 +32,7 @@ pub struct App {
     pub movement: MovementState,
     pub last_time: Instant,
     pub mouse_locked: bool,
+    pub world: World,
     pub last_mouse_pos: (f32, f32),
 }
 
@@ -46,6 +48,7 @@ impl App {
                 up: false,
                 down: false,
             },
+            world: World::new(),
             last_time: Instant::now(),
             mouse_locked: false,
             last_mouse_pos: (f32::NAN, f32::NAN),
@@ -152,8 +155,14 @@ impl ApplicationHandler for App {
                 let now = Instant::now();
                 let delta_time = now.duration_since(self.last_time).as_secs_f64();
                 self.last_time = now;
-
-                renderer.update_camera(
+                self.world.update();
+                let mut _r = self.renderer.as_mut().unwrap();
+                for mesh in self.world.meshes.values_mut() {
+                    if mesh.is_dirty {
+                        _r.update_mesh_buffers(mesh);
+                    }
+                }
+                _r.update_camera(
                     delta_time,
                     (
                         if self.movement.forward { 1.0 } else if self.movement.backward { -1.0 } else { 0.0 },
@@ -162,11 +171,12 @@ impl ApplicationHandler for App {
                     ),
                     (0.0, 0.0),
                 );
-
-                match renderer.render() {
+                // renderer.new_render(&self.world);
+                match _r.new_render(&self.world) {
                     Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost) => renderer.resize(window.inner_size()),
+                    Err(wgpu::SurfaceError::Lost) => _r.resize(window.inner_size()),
                     Err(wgpu::SurfaceError::OutOfMemory) => {
+                        log::error!("wgpu::SurfaceError::OutOfMemory");
                         event_loop.exit();
                     }
                     Err(e) => eprintln!("{:?}", e),

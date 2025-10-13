@@ -1,7 +1,8 @@
 use crate::core::{
-    mesh::Mesh, render::{face_gen::generate_face, greedy_mesher::GreedyMesher}, *
+    mesh::Mesh, render::face_gen::generate_face, *
 };
 use cgmath::Vector3;
+use log::trace;
 use rand::RngCore;
 use std::{collections::{HashMap, HashSet}, time::Instant};
 
@@ -25,23 +26,19 @@ impl World {
             dirty_chunks: HashSet::new(),
         };
         let time = Instant::now();
-        for x in -4..=4 {
-            for y in -4..=4 {
+        for x in -80..=80 {
+            for y in -80..=80 {
                 for z in 0..=2 {
                     world.load_chunks(x, y, z);
                 }
             }
         }
-        println!("chunk loading: {:.2} seconds", (Instant::now() - time).as_secs_f32());
-        // world.load_chunks(0, 0, 0);
-        // world.load_chunks(1, 0, 0);
-        // world.load_chunks(-1, -1, 0);
-        // world.load_chunks(1, -1, 0);
-        // world.load_chunks(-1, 1, 0);
-        // world.load_chunks(1, 1, 0);
+        log::info!("chunk generating: {:.2} second in {} mb", (Instant::now() - time).as_secs_f32(),
+            (size_of::<Chunk>()) * world.chunks.len() / (2<<20)
+        );
         let now = Instant::now();
         world.check_and_update();
-        println!("generated {} chunks in {:.2} seconds", world.chunks.len(), (Instant::now() - now).as_secs_f32());
+        log::info!("generated {} chunk meshes in {:.2} seconds", world.chunks.len(), (Instant::now() - now).as_secs_f32());
         world
     }
     
@@ -49,6 +46,7 @@ impl World {
         let updated = self._update_meshes();
         for k in &updated {
             self.dirty_chunks.remove(k);
+            self.chunks.get_mut(k).unwrap().is_dirty = false;
         };
     }
     
@@ -70,8 +68,18 @@ impl World {
         let mut updated = HashSet::with_capacity(self.dirty_chunks.len());
         for key in &self.dirty_chunks {
             let chunk = self.chunks.get(key).unwrap();
+            
+            #[cfg(debug_assertions)] let time = Instant::now();
+            
             let (vertices, indices) = chunk.generate_mesh(&self);
-            self.meshes.insert(*key, Mesh::new(vertices, indices));
+            
+            #[cfg(debug_assertions)] trace!(
+                "regenerated mesh of chunk at {key:?} with {} vertices in {:.4} secs", 
+                vertices.len(), (Instant::now() - time).as_secs_f32()
+            );
+            
+            let mesh = Mesh::new(vertices, indices);
+            self.meshes.insert(*key, mesh);
             updated.insert(*key);
         };
         updated
@@ -80,9 +88,16 @@ impl World {
     pub fn load_chunks(&mut self, x: i64, y: i64, z: i64) {
         let key = (x, y, z);
         let world_pos = Vector3 { x, y, z };
+        #[cfg(debug_assertions)]
+        let time = Instant::now();
         self.chunks.entry(key).or_insert(
-            Chunk::terrain_gen(world_pos, self.seed
-        ));
+            Chunk::terrain_gen(world_pos, self.seed)
+        );
+        #[cfg(debug_assertions)]
+        trace!(
+            "generated chunk's terrain at {key:?} in {:.4} secs", 
+            (Instant::now() - time).as_secs_f32()
+        );
     }
 
     pub fn get_chunk(&self, world_pos: &Vector3<i64>) -> Option<&Chunk> {
@@ -102,6 +117,13 @@ impl World {
         } else {
             None
         }
+    }
+    
+    pub fn drop_chunk(&mut self, world_pos: Vector3<i64>) {
+        let key = (world_pos.x, world_pos.y, world_pos.z);
+        self.chunks.remove(&key);
+        self.meshes.remove(&key);
+        self.dirty_chunks.remove(&key);
     }
 
     pub fn build_mesh_naive(&self) -> (Vec<Vertex>, Vec<u32>) {
