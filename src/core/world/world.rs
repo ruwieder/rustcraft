@@ -1,58 +1,87 @@
-use crate::core::{
-    mesh::Mesh, render::face_gen::generate_face, *
-};
+use crate::core::{ mesh::Mesh, * };
 use cgmath::Vector3;
-use log::trace;
 use rand::RngCore;
-use std::{collections::{HashMap, HashSet}, time::Instant};
-
-const DEFAULT_BLOCK_ID: u16 = 20;
-const FACE_CULLING: bool = true;
+use std::{collections::{BTreeMap, HashMap, HashSet, VecDeque}, time::{Duration, Instant}};
 
 pub struct World {
-    pub chunks: HashMap<(i64, i64, i64), Chunk>,
-    pub meshes: HashMap<(i64, i64, i64), Mesh>,
+    pub chunks: BTreeMap<(i64, i64, i64), Chunk>,
+    pub meshes: BTreeMap<(i64, i64, i64), Mesh>,
     pub seed: u32,
     pub dirty_chunks: HashSet<(i64, i64, i64)>,
+    pub need_to_load: VecDeque<(i64, i64, i64)>,
 }
 
 impl World {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
         let mut world = Self {
-            chunks: HashMap::new(),
-            meshes: HashMap::new(),
+            chunks: BTreeMap::new(),
+            meshes: BTreeMap::new(),
             seed: rng.next_u32(),
             dirty_chunks: HashSet::new(),
+            need_to_load: VecDeque::new(),
         };
-        let time = Instant::now();
-        for x in -80..=80 {
-            for y in -80..=80 {
-                for z in 0..=2 {
-                    world.load_chunks(x, y, z);
+        const LOAD_AREA: usize = 100;
+        const LOAD_DEPTH: usize = 3;
+        for x in 0..LOAD_AREA {
+            for y in 0..LOAD_AREA {
+                for z in 0..LOAD_DEPTH {
+                    world.need_to_load.push_back((x as i64, y as i64, z as i64));
+                    world.need_to_load.push_back((-(x as i64), y as i64, z as i64));
+                    world.need_to_load.push_back((-(x as i64), -(y as i64), z as i64));
+                    world.need_to_load.push_back(((x as i64), -(y as i64), z as i64));
                 }
             }
         }
-        log::info!("chunk generating: {:.2} second in {} mb", (Instant::now() - time).as_secs_f32(),
-            (size_of::<Chunk>()) * world.chunks.len() / (2<<20)
-        );
-        let now = Instant::now();
-        world.check_and_update();
-        log::info!("generated {} chunk meshes in {:.2} seconds", world.chunks.len(), (Instant::now() - now).as_secs_f32());
         world
     }
     
-    pub fn update(&mut self) {
-        let updated = self._update_meshes();
-        for k in &updated {
-            self.dirty_chunks.remove(k);
-            self.chunks.get_mut(k).unwrap().is_dirty = false;
-        };
+    pub fn update(&mut self, has_time: Duration) {
+        const LOAD_RATIO: f64 = 0.5;
+        self.load_new(
+            Duration::from_secs_f64(has_time.as_secs_f64() * LOAD_RATIO)
+        );
+        self.update_meshes();
     }
     
-    pub fn check_and_update(&mut self) {
-        self._update_dirty_set();
-        self.update();
+    pub fn load_new(&mut self, has_time: Duration) {
+        let started = Instant::now();
+        const BATCH_SIZE: usize = 10;
+        const NEIGHBOR_OFFSETS: [(i64, i64, i64); 6] = [
+            (1, 0, 0), (-1, 0, 0), 
+            (0, 1, 0), (0, -1, 0), 
+            (0, 0, 1), (0, 0, -1)
+        ];
+        
+        while started.elapsed() < has_time && !self.need_to_load.is_empty() {
+            let mut processed = 0;
+            while let Some(k) = self.need_to_load.pop_front() {
+                self.load_chunks(k.0, k.1, k.2);
+                let mut neighbors_to_check = Vec::with_capacity(6);
+                for offset in &NEIGHBOR_OFFSETS {
+                    neighbors_to_check.push((k.0 + offset.0, k.1 + offset.1, k.2 + offset.2));
+                }
+                for neighbor in neighbors_to_check {
+                    if let Some(chunk) = self.chunks.get_mut(&neighbor) {
+                        if !chunk.is_dirty {
+                            chunk.is_dirty = true;
+                            self.dirty_chunks.insert(neighbor);
+                        }
+                    }
+                }
+                if let Some(chunk) = self.chunks.get_mut(&k) {
+                    chunk.is_dirty = true;
+                }
+                self.dirty_chunks.insert(k);
+                processed += 1;
+                if processed >= BATCH_SIZE {
+                    break;
+                }
+            }
+            if processed == 0 {
+                break;
+            }
+        }
     }
     
     pub fn _update_dirty_set(&mut self) {
@@ -63,41 +92,31 @@ impl World {
         }
     }
     
-    /// does not updates dirty_set!
-    fn _update_meshes(&mut self) -> HashSet<(i64, i64, i64)> {
-        let mut updated = HashSet::with_capacity(self.dirty_chunks.len());
-        for key in &self.dirty_chunks {
-            let chunk = self.chunks.get(key).unwrap();
-            
-            #[cfg(debug_assertions)] let time = Instant::now();
-            
+    fn update_meshes(&mut self) {
+        let durty_chunks = std::mem::take(&mut self.dirty_chunks);
+        for key in durty_chunks {
+            let chunk = self.chunks.get(&key).unwrap();
             let (vertices, indices) = chunk.generate_mesh(&self);
             
-            #[cfg(debug_assertions)] trace!(
-                "regenerated mesh of chunk at {key:?} with {} vertices in {:.4} secs", 
-                vertices.len(), (Instant::now() - time).as_secs_f32()
-            );
+            if self.meshes.contains_key(&key) {
+                let mesh = self.meshes.get_mut(&key).unwrap();
+                mesh.update(vertices, indices);
+            } else {
+                let mesh = Mesh::new(vertices, indices);
+                self.meshes.insert(key, mesh);
+            }
             
-            let mesh = Mesh::new(vertices, indices);
-            self.meshes.insert(*key, mesh);
-            updated.insert(*key);
+            self.chunks.get_mut(&key).unwrap().is_dirty = false;
         };
-        updated
     }
     
     pub fn load_chunks(&mut self, x: i64, y: i64, z: i64) {
         let key = (x, y, z);
-        let world_pos = Vector3 { x, y, z };
-        #[cfg(debug_assertions)]
-        let time = Instant::now();
-        self.chunks.entry(key).or_insert(
-            Chunk::terrain_gen(world_pos, self.seed)
-        );
-        #[cfg(debug_assertions)]
-        trace!(
-            "generated chunk's terrain at {key:?} in {:.4} secs", 
-            (Instant::now() - time).as_secs_f32()
-        );
+        if !self.chunks.contains_key(&key) {
+            let world_pos = Vector3 { x, y, z };
+            let chunk = Chunk::terrain_gen(world_pos, self.seed);
+            self.chunks.insert(key, chunk);
+        }
     }
 
     pub fn get_chunk(&self, world_pos: &Vector3<i64>) -> Option<&Chunk> {
@@ -111,7 +130,6 @@ impl World {
 
     pub fn get_block(&self, world_pos: Vector3<i64>) -> Option<Block> {
         let chunk = self.get_chunk(&world_pos);
-
         if let Some(chunk) = chunk {
             chunk.get_from_world_pos(world_pos)
         } else {
@@ -126,106 +144,15 @@ impl World {
         self.dirty_chunks.remove(&key);
     }
 
-    pub fn build_mesh_naive(&self) -> (Vec<Vertex>, Vec<u32>) {
-        let mut vertices = Vec::new();
-        let mut indices: Vec<u32> = Vec::new();
-        let mut index_offset = 0u32;
-        
-        for (chunk_pos, chunk) in &self.chunks {
-            for x in 0..CHUNK_SIZE {
-                for y in 0..CHUNK_SIZE {
-                    for z in 0..CHUNK_SIZE {
-                        let idx = Chunk::index(x, y, z);
-                        let block = chunk.blocks[idx];
-
-                        if block.is_transpose() {
-                            continue;
-                        }
-
-                        let world_pos = Vector3::new(
-                            (chunk_pos.0 * CHUNK_SIZE as i64 + x as i64) as f32,
-                            (chunk_pos.1 * CHUNK_SIZE as i64 + y as i64) as f32,
-                            (chunk_pos.2 * CHUNK_SIZE as i64 + z as i64) as f32,
-                        );
-                        let directions = [
-                            Vector3::new(1.0, 0.0, 0.0),  // Front
-                            Vector3::new(-1.0, 0.0, 0.0), // Back
-                            Vector3::new(0.0, 1.0, 0.0),  // Right
-                            Vector3::new(0.0, -1.0, 0.0), // Left
-                            Vector3::new(0.0, 0.0, 1.0),  // Top
-                            Vector3::new(0.0, 0.0, -1.0), // Bottom
-                        ];
-                        for dir in directions {
-                            if !FACE_CULLING || self.is_face_exposed(world_pos, dir) {
-                                let (v, mut i) =
-                                    generate_face(world_pos, dir, block.id, 1.0, 1.0);
-
-                                for idx in &mut i {
-                                    *idx += index_offset;
-                                }
-
-                                index_offset += v.len() as u32;
-                                vertices.extend(v);
-                                indices.extend(i);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        (vertices, indices)
-    }
-
-    pub fn build_mesh_greedy(&self) -> (Vec<Vertex>, Vec<u32>) {
-        let mut vertices = Vec::new();
-        let mut indices: Vec<u32> = Vec::new();
-        let mut index_offset = 0u32;
-        
-        for (_, mesh) in &self.meshes {
-            vertices.extend_from_slice(mesh.vertices.as_slice());
-            let v = mesh.indices.clone();
-            for v in v {
-                indices.push(v + index_offset);
-            }
-            // indices.extend_from_slice(mesh.indices.as_slice());
-            index_offset += mesh.vertices.len() as u32;
-        };
-        (vertices, indices)
-    
-    //     let mut vertices = Vec::new();
-    //     let mut indices = Vec::new();
-    //     let mut index_offset = 0u32;
-    //     let time = Instant::now();
-    //     for (chunk_pos, chunk) in &self.chunks {
-    //         if !chunk.is_rendered {
-    //             continue;
-    //         }
-    //         let chunk_vertices = GreedyMesher::build_mesh(chunk, self);
-    //         let vertex_count = chunk_vertices.0.len();
-    //         // Transform vertices to world coordinates
-    //         for mut vertex in chunk_vertices.0 {
-    //             vertex.pos[0] += chunk_pos.0 as f32 * CHUNK_SIZE as f32;
-    //             vertex.pos[1] += chunk_pos.1 as f32 * CHUNK_SIZE as f32;
-    //             vertex.pos[2] += chunk_pos.2 as f32 * CHUNK_SIZE as f32;
-    //             vertices.push(vertex);
-    //         }
-
-    //         for index in chunk_vertices.1 {
-    //             indices.push(index + index_offset);
-    //         }
-
-    //         index_offset += vertex_count as u32;
-    //     }
-    //     println!("generated mesh in {:.2} seconds", (Instant::now() - time).as_secs_f32());
-    //     (vertices, indices)
-    }
-
     pub fn is_face_exposed(&self, pos: Vector3<f32>, dir: Vector3<f32>) -> bool {
         let neighbor = Vector3::new(
             (pos.x + dir.x) as i64,
             (pos.y + dir.y) as i64,
             (pos.z + dir.z) as i64,
         );
+        // if self.need_to_load.contains(&(neighbor.x, neighbor.y, neighbor.z)) {
+        //     return false;
+        // }
         let chunk = self.get_chunk(&neighbor);
         if let Some(chunk) = chunk
             && chunk.is_rendered

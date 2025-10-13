@@ -4,7 +4,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowAttributes};
 use winit::dpi::PhysicalSize;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use futures::executor::block_on;
 
 use crate::core::render::renderer::Renderer;
@@ -155,7 +155,7 @@ impl ApplicationHandler for App {
                 let now = Instant::now();
                 let delta_time = now.duration_since(self.last_time).as_secs_f64();
                 self.last_time = now;
-                self.world.update();
+                self.world.update(Duration::from_secs_f32(0.5 / 60.0));
                 let mut _r = self.renderer.as_mut().unwrap();
                 for mesh in self.world.meshes.values_mut() {
                     if mesh.is_dirty {

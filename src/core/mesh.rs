@@ -20,4 +20,10 @@ impl Mesh {
             is_dirty: true,
         }
     }
+    pub fn update(&mut self, vertices: Vec<Vertex>, indices: Vec<u32>) {
+        self.index_count = indices.len() as u32;
+        self.vertices = vertices;
+        self.indices = indices;
+        self.is_dirty = true;
+    }
 }
