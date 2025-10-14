@@ -1,4 +1,4 @@
-use cgmath::{EuclideanSpace, InnerSpace, Matrix4, Point3, Vector4};
+use cgmath::{InnerSpace, Matrix4, Point3, Vector4};
 
 #[derive(Debug, Clone)]
 pub struct Frustum {

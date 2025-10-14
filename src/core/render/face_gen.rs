@@ -2,6 +2,7 @@ use cgmath::Vector3;
 
 use crate::core::render::vertex::Vertex;
 
+#[allow(unused_variables)]
 pub fn generate_face(
     pos: Vector3<f32>,
     normal: Vector3<f32>,

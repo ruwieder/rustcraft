@@ -5,4 +5,3 @@ pub mod chunk;
 pub mod mesh;
 use block::Block;
 use chunk::{Chunk, CHUNK_SIZE};
-use render::frustum_culling;
