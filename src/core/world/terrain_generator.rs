@@ -11,7 +11,7 @@ const HEIGHTMAP_SCALE_Z: f64 = (CHUNK_SIZE*2) as f64;
 const HEIGHTMAP_MAX: f64 = 1.0;
 const HEIGHTMAP_MIN: f64 = 0.2;
 
-const NOISE3D_SCALE: f64 = 20.0;
+const NOISE3D_SCALE: f64 = 50.0;
 const NOISE3D_VALUE: f64 = 0.4;
 
 impl TerrainGenerator {

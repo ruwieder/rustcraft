@@ -1,3 +1,4 @@
+use rand::RngCore;
 use winit::application::ApplicationHandler;
 use winit::event::{WindowEvent, ElementState, MouseButton};
 use winit::event_loop::ActiveEventLoop;
@@ -38,6 +39,7 @@ pub struct App {
 
 impl App {
     pub fn new() -> Self {
+        let mut rng = rand::thread_rng();
         Self {
             renderer: None,
             movement: MovementState {
@@ -48,7 +50,7 @@ impl App {
                 up: false,
                 down: false,
             },
-            world: World::new(),
+            world: World::new(rng.next_u32()),
             last_time: Instant::now(),
             mouse_locked: false,
             last_mouse_pos: (f32::NAN, f32::NAN),

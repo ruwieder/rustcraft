@@ -13,12 +13,11 @@ pub struct World {
 }
 
 impl World {
-    pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
+    pub fn new(seed: u32) -> Self {
         Self {
             chunks: BTreeMap::new(),
             meshes: BTreeMap::new(),
-            seed: rng.next_u32(),
+            seed,
             dirty_chunks: HashSet::new(),
             need_to_load: VecDeque::new(),
         }

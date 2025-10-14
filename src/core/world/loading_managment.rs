@@ -4,9 +4,9 @@ use cgmath::{InnerSpace, Vector3};
 
 use crate::core::{chunk::{Chunk, CHUNK_SIZE}, render::camera::Camera, world::world::World};
 
-const LOAD_DISTANCE: i32 = 20;
-const LOAD_DISTANCE_Z: i32 = 3;
-const UNLOAD_DISTANCE: i32 = 30;
+const LOAD_DISTANCE: i32 = 5;
+const LOAD_DISTANCE_Z: i32 = 5;
+const UNLOAD_DISTANCE: i32 = 10;
 
 impl World {
     pub fn loader_update(&mut self, has_time: Duration, camera: &Camera) {
@@ -69,7 +69,8 @@ impl World {
             }
         }
         chunks_to_load.sort_by_key(|(priority, _)| Reverse(*priority));
-        self.need_to_load.extend(chunks_to_load.into_iter().map(|(_, key)| key));
+        // self.need_to_load.extend(chunks_to_load.into_iter().map(|(_, key)| key));
+        self.need_to_load = chunks_to_load.into_iter().map(|(_, key)| key).collect();
     }
     
     
@@ -95,7 +96,7 @@ impl World {
     
     pub fn unload_far(&mut self, player_chunk: Vector3<i64>){
         let unload_dist_sq = (UNLOAD_DISTANCE * UNLOAD_DISTANCE) as i64;
-        let unload_dist_z = LOAD_DISTANCE_Z as i64 + 3;
+        let unload_dist_z = LOAD_DISTANCE_Z as i64 + 10;
         
         let to_remove: Vec<_> = self.chunks
             .keys()

@@ -18,5 +18,20 @@ noise = "*"
 rand = "*"
 rayon = "*"
 
+[dev-dependencies]
+criterion = "*"
+
 [lints.rust]
 dead_code = "allow"
+
+[[bench]]
+name = "terrain_generation"
+harness = false
+
+[[bench]]
+name = "chunk_meshing"
+harness = false
+
+[[bench]]
+name = "generation_and_meshing"
+harness = false
