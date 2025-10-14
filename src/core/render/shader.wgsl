@@ -33,5 +33,7 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // return vec4<f32>(in.tex_coords, 0.0, 1.0); // UVs
-    return textureSample(texture_atlas, texture_sampler, in.tex_coords); // texture sampling
+    // return textureSample(texture_atlas, texture_sampler, in.tex_coords); // texture sampling
+    return textureSample(texture_atlas, texture_sampler, in.tex_coords) * vec4<f32>(in.tex_coords, 0.0, 1.0);
+    
 }

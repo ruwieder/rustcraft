@@ -1,12 +1,12 @@
 use cgmath::Vector3;
 use noise::{NoiseFn, Simplex};
-use rayon::prelude::*;
+// use rayon::prelude::*;
 use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE, CHUNK_VOLUME}};
 
 pub struct TerrainGenerator;
 
 const HEIGHTMAP_BLOCK_ID: u16 = 0;
-const HEIGHTMAP_SCALE_XY: f64 = 400.0;
+const HEIGHTMAP_SCALE_XY: f64 = 100.0;
 const HEIGHTMAP_SCALE_Z: f64 = (CHUNK_SIZE*2) as f64;
 const HEIGHTMAP_MAX: f64 = 1.0;
 const HEIGHTMAP_MIN: f64 = 0.2;
@@ -17,7 +17,7 @@ const NOISE3D_VALUE: f64 = 0.4;
 impl TerrainGenerator {
     pub fn noise_3d(world_pos: &Vector3<i64>, seed: u32, blocks: &mut [Block;CHUNK_VOLUME]) {
         let noise_gen = Simplex::new(seed);
-        blocks.par_iter_mut().enumerate().for_each(|(i, block)| {
+        blocks.iter_mut().enumerate().for_each(|(i, block)| {
             let (x, y, z) = Chunk::from_index(i);
             let global_pos = Vector3::new(
                 x as i64 + world_pos.x * CHUNK_SIZE as i64,
@@ -38,7 +38,10 @@ impl TerrainGenerator {
     
     pub fn heightmap(world_pos: &Vector3<i64>, seed: u32, blocks: &mut [Block;CHUNK_VOLUME]) {
         let noise_gen = Simplex::new(seed);
-        blocks.par_iter_mut().enumerate().for_each(|(i, block)| {
+        if world_pos.z as f64 >= HEIGHTMAP_MAX * HEIGHTMAP_SCALE_Z {
+            return;
+        };
+        blocks.iter_mut().enumerate().for_each(|(i, block)| {
             let (x, y, z) = Chunk::from_index(i);
             let global_pos = Vector3::new(
                 x as i64 + world_pos.x * CHUNK_SIZE as i64,

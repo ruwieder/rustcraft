@@ -1,4 +1,4 @@
-pub const CHUNK_SIZE: usize = 32;
+pub const CHUNK_SIZE: usize = 16;
 pub const CHUNK_VOLUME: usize = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 use cgmath::Vector3;
 
@@ -7,7 +7,6 @@ use crate::core::{render::{greedy_mesher::GreedyMesher, vertex::Vertex}, world::
 pub struct Chunk {
     pub blocks: [Block; CHUNK_VOLUME],
     pub _pos: Vector3<i64>,
-    // pub is_empty: bool
     pub is_rendered: bool,
     pub is_dirty: bool,
 }
@@ -51,12 +50,11 @@ impl Chunk {
     pub fn terrain_gen(world_pos: Vector3<i64>, seed: u32) -> Self {
         let mut blocks = [Block::air(); CHUNK_VOLUME];
         TerrainGenerator::heightmap(&world_pos, seed, &mut blocks);
-        
         Chunk {
             blocks,
             _pos: world_pos,
             is_rendered: true,
-            is_dirty: true
+            is_dirty: true,
         }
     }
     

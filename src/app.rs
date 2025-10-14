@@ -156,7 +156,7 @@ impl ApplicationHandler for App {
                 let delta_time = now.duration_since(self.last_time).as_secs_f64();
                 self.last_time = now;
                 let mut renderer = self.renderer.as_mut().unwrap();
-                self.world.update(Duration::from_secs_f32(0.5 / 60.0), &mut renderer);
+                self.world.update(Duration::from_secs_f32(0.2 / 60.0), &mut renderer);
                 renderer.update_camera(
                     delta_time,
                     (

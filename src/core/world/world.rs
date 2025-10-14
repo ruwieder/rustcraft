@@ -1,7 +1,8 @@
-use crate::core::{ mesh::Mesh, render::renderer::Renderer, * };
+use crate::core::{ mesh::Mesh, render::{renderer::Renderer, vertex::Vertex}, * };
 use cgmath::Vector3;
 use rand::RngCore;
-use std::{collections::{BTreeMap, HashSet, VecDeque}, time::{Duration, Instant}};
+use rayon::prelude::*;
+use std::{collections::{BTreeMap, HashSet, VecDeque}, time::Duration};
 
 pub struct World {
     pub chunks: BTreeMap<(i64, i64, i64), Chunk>,
@@ -14,106 +15,46 @@ pub struct World {
 impl World {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
-        let mut world = Self {
+        Self {
             chunks: BTreeMap::new(),
             meshes: BTreeMap::new(),
             seed: rng.next_u32(),
             dirty_chunks: HashSet::new(),
             need_to_load: VecDeque::new(),
-        };
-        const LOAD_AREA: usize = 10;
-        const LOAD_DEPTH: usize = 2;
-
-        for x in 0..LOAD_AREA {
-            for y in 0..LOAD_AREA {
-                for z in 0..LOAD_DEPTH {
-                    world.need_to_load.push_back((x as i64, y as i64, z as i64));
-                    world.need_to_load.push_back((-(x as i64), y as i64, z as i64));
-                    world.need_to_load.push_back((-(x as i64), -(y as i64), z as i64));
-                    world.need_to_load.push_back(((x as i64), -(y as i64), z as i64));
-                }
-            }
         }
-        world
     }
     
     pub fn update(&mut self, has_time: Duration, renderer: &mut Renderer) {
-        const LOAD_RATIO: f64 = 0.7;
-        self.load_new(
-            Duration::from_secs_f64(has_time.as_secs_f64() * LOAD_RATIO)
-        );
+        self.loader_update(has_time, &renderer.camera);
+        renderer.cleanup_unused_meshes(&self.chunks);
         self.update_meshes(renderer);
     }
     
-    pub fn load_new(&mut self, has_time: Duration) {
-        let started = Instant::now();
-        const BATCH_SIZE: usize = 10;
-        const NEIGHBOR_OFFSETS: [(i64, i64, i64); 6] = [
-            (1, 0, 0), (-1, 0, 0), 
-            (0, 1, 0), (0, -1, 0), 
-            (0, 0, 1), (0, 0, -1)
-        ];
-        
-        while started.elapsed() < has_time && !self.need_to_load.is_empty() {
-            let mut processed = 0;
-            while let Some(k) = self.need_to_load.pop_front() {
-                self.load_chunks(k.0, k.1, k.2);
-                let mut neighbors_to_check = Vec::with_capacity(6);
-                for offset in &NEIGHBOR_OFFSETS {
-                    neighbors_to_check.push((k.0 + offset.0, k.1 + offset.1, k.2 + offset.2));
-                }
-                for neighbor in neighbors_to_check {
-                    if let Some(chunk) = self.chunks.get_mut(&neighbor) {
-                        if !chunk.is_dirty {
-                            chunk.is_dirty = true;
-                            self.dirty_chunks.insert(neighbor);
-                        }
-                    }
-                }
-                if let Some(chunk) = self.chunks.get_mut(&k) {
-                    chunk.is_dirty = true;
-                }
-                self.dirty_chunks.insert(k);
-                processed += 1;
-                if processed >= BATCH_SIZE {
-                    break;
-                }
-            }
-            if processed == 0 {
-                break;
-            }
-        }
-    }
-    
-    pub fn _update_dirty_set(&mut self) {
-        for (key, chunk) in &self.chunks {
-            if chunk.is_dirty {
-                self.dirty_chunks.insert(*key);
-            }
-        }
-    }
-    
     fn update_meshes(&mut self, renderer: &mut Renderer) {
-        let durty_chunks = std::mem::take(&mut self.dirty_chunks);
-        for key in durty_chunks {
-            let chunk = self.chunks.get(&key).unwrap();
-            let (vertices, indices) = chunk.generate_mesh(&self);
-            
-            if self.meshes.contains_key(&key) {
-                let mesh = self.meshes.get_mut(&key).unwrap();
+        let dirty_chunks = std::mem::take(&mut self.dirty_chunks);        
+        let mesh_updates: Vec<((i64, i64, i64), (Vec<Vertex>, Vec<u32>))> = dirty_chunks
+            .par_iter()
+            .filter_map(|key| {
+                let chunk = self.chunks.get(key)?;
+                let mesh_data = chunk.generate_mesh(&self);
+                Some((*key, mesh_data))
+            })
+            .collect();
+        for (key, (vertices, indices)) in mesh_updates {
+            if let Some(mesh) = self.meshes.get_mut(&key) {
                 mesh.update(vertices, indices);
             } else {
                 let mesh = Mesh::new(vertices, indices);
                 self.meshes.insert(key, mesh);
             }
-            
             renderer.on_mesh_updated(key);
-            
-            self.chunks.get_mut(&key).unwrap().is_dirty = false;
-        };
+            if let Some(chunk) = self.chunks.get_mut(&key) {
+                chunk.is_dirty = false;
+            }
+        }
     }
     
-    pub fn load_chunks(&mut self, x: i64, y: i64, z: i64) {
+    pub fn load_chunk(&mut self, x: i64, y: i64, z: i64) {
         let key = (x, y, z);
         if !self.chunks.contains_key(&key) {
             let world_pos = Vector3 { x, y, z };

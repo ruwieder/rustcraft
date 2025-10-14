@@ -52,9 +52,8 @@ impl Camera {
     }
     
     pub fn update(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
-        let speed = 20.0 * dt as f32;
+        let speed = 160.0 * dt as f32;
         let rot_speed = 0.15 * dt as f32;
-        
         self.rot.y += mouse_delta.0 * rot_speed; // Yaw (left-right)
         self.rot.x += mouse_delta.1 * rot_speed; // Pitch (up-down)
         self.rot.x = self.rot.x.clamp(-PI / 2.0, PI / 2.0);
@@ -86,8 +85,6 @@ impl Camera {
         self.frustum = Frustum::from_view_projection(&self.view_proj_matrix);
         self.is_dirty = false;
     }
-    
-    
     
     pub fn get_uniform(&self) -> UniformBuffer {
         let mut uniform = UniformBuffer::default();
