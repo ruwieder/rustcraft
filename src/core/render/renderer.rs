@@ -1,9 +1,9 @@
 use wgpu::*;
 use wgpu::util::DeviceExt;
-use cgmath::{Vector2, Vector3};
+use cgmath::{Point3, Vector2, Vector3};
 use std::collections::{BTreeSet, HashMap};
 
-use crate::core::{mesh::Mesh, render::{camera::{Camera, UniformBuffer}, texture, vertex::Vertex}, world::world::World};
+use crate::core::{chunk::CHUNK_SIZE, mesh::Mesh, render::{camera::{Camera, UniformBuffer}, texture, vertex::Vertex}, world::world::World};
 
 const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 1.0, a: 1.0 };
 const USE_GREEDY: bool = true;
@@ -274,6 +274,8 @@ impl Renderer {
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
+        
+        let frustum = &self.camera.frustum;
 
         {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
@@ -311,6 +313,23 @@ impl Renderer {
                     if chunk.is_dirty {
                         continue;
                     }
+                }
+                
+                // Frustum culling check
+                let chunk_aabb_min = Point3::new(
+                    key.0 as f32 * CHUNK_SIZE as f32,
+                    key.1 as f32 * CHUNK_SIZE as f32,
+                    key.2 as f32 * CHUNK_SIZE as f32,
+                );
+                let chunk_aabb_max = Point3::new(
+                    (key.0 + 1) as f32 * CHUNK_SIZE as f32,
+                    (key.1 + 1) as f32 * CHUNK_SIZE as f32,
+                    (key.2 + 1) as f32 * CHUNK_SIZE as f32,
+                );
+                
+                if !frustum.intersects_aabb(chunk_aabb_min, chunk_aabb_max) {
+                    // count_culled += 1;
+                    continue;
                 }
                 
                 if let (Some(vertex_buffer), Some(index_buffer)) = (&gpu_mesh.vertex_buffer, &gpu_mesh.index_buffer) {

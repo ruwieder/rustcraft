@@ -1,5 +1,7 @@
-use cgmath::{Deg, InnerSpace, Matrix4, PerspectiveFov, Point3, Vector2, Vector3};
+use cgmath::{EuclideanSpace, Zero, Deg, InnerSpace, Matrix4, PerspectiveFov, Point3, SquareMatrix, Vector2, Vector3, Vector4};
 use std::f32::consts::PI;
+
+use crate::core::render::frustum_culling::Frustum;
 pub struct Camera {
     pub pos: Vector3<f32>,
     pub rot: Vector2<f32>,
@@ -7,6 +9,11 @@ pub struct Camera {
     pub aspect: f32,
     pub near: f32,
     pub far: f32,
+    view_matrix: Matrix4<f32>,
+    proj_matrix: Matrix4<f32>,
+    view_proj_matrix: Matrix4<f32>,
+    pub frustum: Frustum,
+    is_dirty: bool
 }
 
 #[repr(C, align(16))]
@@ -27,14 +34,21 @@ impl Default for UniformBuffer {
 
 impl Camera {
     pub fn new(pos: Vector3<f32>, rot: Vector2<f32>, aspect: f32) -> Self {
-        Self {
+        let mut camera = Self {
             pos,
             rot,
             fov: 90.0,
             aspect,
             near: 0.1,
-            far: 10_000.0
-        }
+            far: 10_000.0,
+            view_matrix: Matrix4::identity(),
+            proj_matrix: Matrix4::identity(),
+            view_proj_matrix: Matrix4::identity(),
+            frustum: Frustum { planes: [Vector4::zero(); 6] },
+            is_dirty: true,
+        };
+        camera.update_matrices();
+        camera
     }
     
     pub fn update(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
@@ -50,33 +64,38 @@ impl Camera {
         self.pos += forward * movement.0 * speed;
         self.pos -= right * movement.1 * speed;
         self.pos += up * movement.2 * speed;
+        self.is_dirty = true;
+        self.update_matrices();
     }
     
-    pub fn view_matrix(&self) -> Matrix4<f32> {
+    fn update_matrices(&mut self) {
+        if !self.is_dirty { return; }
+        
+        let eye = Point3::from_vec(self.pos);
+        
         let (forward, _, up) = self.fru();
-        let pos = Point3::new(self.pos.x, self.pos.y, self.pos.z);
-        Matrix4::look_at_rh(pos, pos + forward, up)
+        self.view_matrix = Matrix4::look_at_rh(eye, eye + forward, up);
+        
+        self.proj_matrix = PerspectiveFov {
+            fovy: Deg(self.fov).into(),
+            aspect: self.aspect,
+            near: self.near,
+            far: self.far,
+        }.into();
+        self.view_proj_matrix = self.proj_matrix * self.view_matrix;
+        self.frustum = Frustum::from_view_projection(&self.view_proj_matrix);
+        self.is_dirty = false;
     }
     
-    pub fn proj_matrix(&self) -> Matrix4<f32> {
-        let perspective = PerspectiveFov {
-                fovy: Deg(self.fov).into(),
-                aspect: self.aspect,
-                near: 0.1,
-                far: 1000.0,
-            };
-            Matrix4::from(perspective)
-    }
+    
     
     pub fn get_uniform(&self) -> UniformBuffer {
         let mut uniform = UniformBuffer::default();
-        let view = self.view_matrix();
-        let proj = self.proj_matrix();
-        uniform.view_proj = (proj * view).into();
+        uniform.view_proj = self.view_proj_matrix.into();
         uniform.camera_pos = [self.pos.x, self.pos.y, self.pos.z, 69.0];
         uniform
     }
-    
+     
     /// (forward, right, up)
     pub fn fru(&self) -> (Vector3<f32>, Vector3<f32>, Vector3<f32>) {
         let (sin_yaw, cos_yaw) = (self.rot.y.sin(), self.rot.y.cos());

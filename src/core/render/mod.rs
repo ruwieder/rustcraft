@@ -4,3 +4,4 @@ pub mod camera;
 pub mod texture;
 pub mod greedy_mesher;
 pub mod face_gen;
+pub mod frustum_culling;
