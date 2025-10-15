@@ -3,7 +3,7 @@ use wgpu::util::DeviceExt;
 use cgmath::{Point3, Vector2, Vector3};
 use hashbrown::HashMap;
 
-use crate::core::{chunk::{Chunk, CHUNK_SIZE}, mesh::Mesh, render::{camera::{Camera, UniformBuffer}, texture, vertex::Vertex}, world::world::{ChunkStorage, World}};
+use crate::core::{chunk::{Chunk, CHUNK_SIZE}, mesh::Mesh, render::{camera::{Camera, UniformBuffer}, texture, vertex::Vertex}, world::world::World};
 
 const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 1.0, a: 1.0 };
 const USE_GREEDY: bool = true;

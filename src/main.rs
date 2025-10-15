@@ -3,8 +3,14 @@ mod app;
 
 use app::App;
 
+// gives about +5% performance in comparison to default, keep for now
+use tcmalloc_better::TCMalloc;
+#[global_allocator]
+static GLOBAL: TCMalloc = TCMalloc;
 
 fn main() {
+    TCMalloc::process_background_actions_thread();
+    
     simple_logger::SimpleLogger::new()
         .with_colors(true)
         .with_local_timestamps()

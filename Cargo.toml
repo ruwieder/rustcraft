@@ -19,6 +19,7 @@ fastnoise-lite = "*"
 rand = "*"
 rayon = "*"
 hashbrown = "*"
+tcmalloc-better = "*"
 
 [dev-dependencies]
 criterion = "*"

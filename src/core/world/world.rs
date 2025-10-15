@@ -4,11 +4,9 @@ use rayon::prelude::*;
 use std::{collections::{HashSet, VecDeque}, time::Duration};
 use hashbrown::HashMap;
 
-pub type ChunkStorage = HashMap<(i64, i64, i64), Chunk>;
-pub type MeshStorage = HashMap<(i64, i64, i64), Mesh>;
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>,
-    pub meshes: MeshStorage,
+    pub meshes: HashMap<(i64, i64, i64), Mesh>,
     pub seed: u32,
     pub dirty_chunks: HashSet<(i64, i64, i64)>,
     pub need_to_load: VecDeque<(i64, i64, i64)>,
@@ -18,7 +16,7 @@ impl World {
     pub fn new(seed: u32) -> Self {
         Self {
             chunks: HashMap::new(),
-            meshes: MeshStorage::new(),
+            meshes: HashMap::new(),
             seed,
             dirty_chunks: HashSet::new(),
             need_to_load: VecDeque::new(),
