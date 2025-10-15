@@ -1,12 +1,14 @@
 use crate::core::{ mesh::Mesh, render::{renderer::Renderer, vertex::Vertex}, * };
 use cgmath::Vector3;
-use rand::RngCore;
 use rayon::prelude::*;
-use std::{collections::{BTreeMap, HashSet, VecDeque}, time::Duration};
+use std::{collections::{HashSet, VecDeque}, time::Duration};
+use hashbrown::HashMap;
 
+pub type ChunkStorage = HashMap<(i64, i64, i64), Chunk>;
+pub type MeshStorage = HashMap<(i64, i64, i64), Mesh>;
 pub struct World {
-    pub chunks: BTreeMap<(i64, i64, i64), Chunk>,
-    pub meshes: BTreeMap<(i64, i64, i64), Mesh>,
+    pub chunks: HashMap<(i64, i64, i64), Chunk>,
+    pub meshes: MeshStorage,
     pub seed: u32,
     pub dirty_chunks: HashSet<(i64, i64, i64)>,
     pub need_to_load: VecDeque<(i64, i64, i64)>,
@@ -15,8 +17,8 @@ pub struct World {
 impl World {
     pub fn new(seed: u32) -> Self {
         Self {
-            chunks: BTreeMap::new(),
-            meshes: BTreeMap::new(),
+            chunks: HashMap::new(),
+            meshes: MeshStorage::new(),
             seed,
             dirty_chunks: HashSet::new(),
             need_to_load: VecDeque::new(),
@@ -49,6 +51,7 @@ impl World {
             renderer.on_mesh_updated(key);
             if let Some(chunk) = self.chunks.get_mut(&key) {
                 chunk.is_dirty = false;
+                self.dirty_chunks.remove(&key);
             }
         }
     }
@@ -93,9 +96,6 @@ impl World {
             (pos.y + dir.y) as i64,
             (pos.z + dir.z) as i64,
         );
-        // if self.need_to_load.contains(&(neighbor.x, neighbor.y, neighbor.z)) {
-        //     return false;
-        // }
         let chunk = self.get_chunk(&neighbor);
         if let Some(chunk) = chunk
             && chunk.is_rendered

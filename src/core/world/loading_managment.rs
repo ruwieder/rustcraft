@@ -4,9 +4,9 @@ use cgmath::{InnerSpace, Vector3};
 
 use crate::core::{chunk::{Chunk, CHUNK_SIZE}, render::camera::Camera, world::world::World};
 
-const LOAD_DISTANCE: i32 = 5;
+const LOAD_DISTANCE: i32 = 20;
 const LOAD_DISTANCE_Z: i32 = 5;
-const UNLOAD_DISTANCE: i32 = 10;
+const UNLOAD_DISTANCE: i32 = LOAD_DISTANCE * 2;
 
 impl World {
     pub fn loader_update(&mut self, has_time: Duration, camera: &Camera) {
@@ -82,13 +82,9 @@ impl World {
         // Boost priority for chunks in camera direction
         let chunk_dir = Vector3::new(delta.x as f32, delta.y as f32, delta.z as f32).normalize();
         let dot = camera_dir.dot(chunk_dir);
-        if dot > 0.7 {
-            priority += 500;
-        } else if dot > 0.3 {
-            priority += 200;
-        }
+        priority += (1000.0 * dot.max(0.0)) as u32;
         // Boost for chunks directly around player (neighbors)
-        if delta.x.abs() <= 1 && delta.z.abs() <= 1 && delta.y.abs() <= 1 {
+        if delta.x.abs() <= 5 && delta.z.abs() <= 5 && delta.y.abs() <= 5 {
             priority += 1000;
         }
         priority

@@ -1,11 +1,15 @@
 use cgmath::Vector3;
-use rayon::prelude::*;
+// use rayon::prelude::*;
 use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE}, render::{face_gen::generate_face, vertex::Vertex}, world::world::World};
 
 pub struct GreedyMesher;
 
 impl GreedyMesher {
     pub fn build_mesh(chunk: &Chunk, world: &World) -> (Vec<Vertex>, Vec<u32>) {
+        if Self::is_only_air_fast(chunk) && Self::is_only_air(chunk) {
+            return (Vec::new(), Vec::new());
+        }
+        
         let normals = [
             Vector3::new(1.0, 0.0, 0.0), 
             Vector3::new(-1.0, 0.0, 0.0),
@@ -14,12 +18,11 @@ impl GreedyMesher {
             Vector3::new(0.0, 0.0, 1.0), 
             Vector3::new(0.0, 0.0, -1.0),
         ];
-        
         // Precompute exposed faces for the entire chunk to avoid repeated world lookups
         let exposed_cache = Self::build_exposed_cache(chunk, world);
         
         let direction_results: Vec<(Vec<Vertex>, Vec<u32>)> = normals
-            .par_iter()
+            .iter()
             .enumerate()
             .map(|(dir, &normal)| {
                 Self::greedy_mesh_direction(chunk, normal, dir, &exposed_cache)
@@ -38,7 +41,34 @@ impl GreedyMesher {
 
         (vertices, indices)
     }
-
+    
+    fn is_only_air(chunk: &Chunk) -> bool {
+        for x in 0..CHUNK_SIZE { for y in 0..CHUNK_SIZE { for z in 0..CHUNK_SIZE {
+            let idx = Chunk::index(x, y, z);
+            if !chunk.blocks[idx].is_transpose() {
+                return false;
+            }
+        }}};
+        return true;
+    }
+    
+    #[inline]
+    fn is_only_air_fast(chunk: &Chunk) -> bool {
+        const IDX_1: usize = Chunk::index(0, 0, 0);
+        const IDX_2: usize = Chunk::index(0, 0, CHUNK_SIZE - 1);
+        const IDX_3: usize = Chunk::index(0, CHUNK_SIZE - 1, 0);
+        const IDX_4: usize = Chunk::index(0, CHUNK_SIZE - 1, CHUNK_SIZE - 1);
+        const IDX_5: usize = Chunk::index(CHUNK_SIZE - 1, 0, 0);
+        const IDX_6: usize = Chunk::index(CHUNK_SIZE - 1, 0, CHUNK_SIZE - 1);
+        const IDX_7: usize = Chunk::index(CHUNK_SIZE - 1, CHUNK_SIZE - 1, 0);
+        const IDX_8: usize = Chunk::index(CHUNK_SIZE - 1, CHUNK_SIZE - 1, CHUNK_SIZE - 1);
+        chunk.blocks[IDX_1].is_transpose() && chunk.blocks[IDX_2].is_transpose()
+        && chunk.blocks[IDX_3].is_transpose() && chunk.blocks[IDX_4].is_transpose()
+        && chunk.blocks[IDX_5].is_transpose() && chunk.blocks[IDX_6].is_transpose()
+        && chunk.blocks[IDX_7].is_transpose() && chunk.blocks[IDX_8].is_transpose()
+    }
+    
+    
     fn build_exposed_cache(chunk: &Chunk, world: &World) -> [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE] {
         let mut cache = [[[0u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
         let chunk_world_base = Vector3::new(

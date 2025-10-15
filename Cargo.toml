@@ -15,11 +15,16 @@ once_cell = "*"
 image = "*"
 anyhow = "*"
 noise = "*"
+fastnoise-lite = "*"
 rand = "*"
 rayon = "*"
+hashbrown = "*"
 
 [dev-dependencies]
 criterion = "*"
+
+[profile.release]
+debug = true # for profiling
 
 [lints.rust]
 dead_code = "allow"

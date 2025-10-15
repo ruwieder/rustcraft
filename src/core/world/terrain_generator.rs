@@ -1,61 +1,50 @@
 use cgmath::Vector3;
-use noise::{NoiseFn, Simplex};
-// use rayon::prelude::*;
-use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE, CHUNK_VOLUME}};
+use fastnoise_lite::*;
+
+use crate::core::{
+    block::Block,
+    chunk::{CHUNK_SIZE, CHUNK_VOLUME, Chunk},
+};
 
 pub struct TerrainGenerator;
 
-const HEIGHTMAP_BLOCK_ID: u16 = 0;
-const HEIGHTMAP_SCALE_XY: f64 = 100.0;
-const HEIGHTMAP_SCALE_Z: f64 = (CHUNK_SIZE*2) as f64;
-const HEIGHTMAP_MAX: f64 = 1.0;
-const HEIGHTMAP_MIN: f64 = 0.2;
-
-const NOISE3D_SCALE: f64 = 50.0;
-const NOISE3D_VALUE: f64 = 0.4;
 
 impl TerrainGenerator {
-    pub fn noise_3d(world_pos: &Vector3<i64>, seed: u32, blocks: &mut [Block;CHUNK_VOLUME]) {
-        let noise_gen = Simplex::new(seed);
-        blocks.iter_mut().enumerate().for_each(|(i, block)| {
-            let (x, y, z) = Chunk::from_index(i);
-            let global_pos = Vector3::new(
-                x as i64 + world_pos.x * CHUNK_SIZE as i64,
-                y as i64 + world_pos.y * CHUNK_SIZE as i64, 
-                z as i64 + world_pos.z * CHUNK_SIZE as i64
+    pub fn heightmap_advanced(
+        world_pos: &Vector3<i64>,
+        seed: u32,
+        blocks: &mut [Block; CHUNK_VOLUME],
+    ) {
+        const BLOCK_ID: u16 = 0;
+        const SCALE_XY: f32 = 0.001;
+        const SCALE_Z: f32 = 24.0;
+        if (world_pos.z * CHUNK_SIZE as i64) > SCALE_Z as i64 {
+            return;
+        }
+        if (world_pos.z + 1 * CHUNK_SIZE as i64) < SCALE_Z as i64 {
+            for i in 0..CHUNK_VOLUME {
+                blocks[i].id = BLOCK_ID;
+            }
+            return;
+        }
+        let mut noise_gen = FastNoiseLite::with_seed(seed as i32);
+        noise_gen.set_fractal_type(Some(FractalType::FBm));
+        noise_gen.set_fractal_octaves(Some(1));
+        noise_gen.set_frequency(Some(SCALE_XY));
+        for x in 0..CHUNK_SIZE {for y in 0..CHUNK_SIZE {
+            let height = noise_gen.get_noise_2d(
+                (world_pos.x * CHUNK_SIZE as i64 + x as i64) as f32, 
+                (world_pos.y * CHUNK_SIZE as i64 + y as i64) as f32
             );
-            let value = (noise_gen.get([
-                global_pos.x as f64 / NOISE3D_SCALE,
-                global_pos.y as f64 / NOISE3D_SCALE,
-                global_pos.z as f64 / NOISE3D_SCALE
-            ]) + 1.0) / 2.0;
             
-            if value > NOISE3D_VALUE {
-                *block = Block {id: HEIGHTMAP_BLOCK_ID};
-            };
-        });
+            for z in 0..CHUNK_SIZE {
+                let idx = Chunk::index(x, y, z);
+                let z = z as i64 + world_pos.z * CHUNK_SIZE as i64;
+                if (z as f32) / SCALE_Z < height {
+                    blocks[idx] = Block{ id: BLOCK_ID };
+                };
+            }
+        }}
     }
     
-    pub fn heightmap(world_pos: &Vector3<i64>, seed: u32, blocks: &mut [Block;CHUNK_VOLUME]) {
-        let noise_gen = Simplex::new(seed);
-        if world_pos.z as f64 >= HEIGHTMAP_MAX * HEIGHTMAP_SCALE_Z {
-            return;
-        };
-        blocks.iter_mut().enumerate().for_each(|(i, block)| {
-            let (x, y, z) = Chunk::from_index(i);
-            let global_pos = Vector3::new(
-                x as i64 + world_pos.x * CHUNK_SIZE as i64,
-                y as i64 + world_pos.y * CHUNK_SIZE as i64, 
-                z as i64 + world_pos.z * CHUNK_SIZE as i64
-            );
-            let value = (noise_gen.get([
-                global_pos.x as f64 / HEIGHTMAP_SCALE_XY,
-                global_pos.y as f64 / HEIGHTMAP_SCALE_XY,
-            ]) + 1.0) / 2.0 * HEIGHTMAP_MAX;
-            
-            if (global_pos.z as f64) < value * HEIGHTMAP_SCALE_Z + HEIGHTMAP_MIN {
-                *block = Block { id: HEIGHTMAP_BLOCK_ID };
-            };
-        });
-    }
 }

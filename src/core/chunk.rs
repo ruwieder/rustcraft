@@ -2,7 +2,11 @@ pub const CHUNK_SIZE: usize = 32;
 pub const CHUNK_VOLUME: usize = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 use cgmath::Vector3;
 
-use crate::core::{render::{greedy_mesher::GreedyMesher, vertex::Vertex}, world::{terrain_generator::TerrainGenerator, world::World}, Block};
+use crate::core::{
+    Block,
+    render::{greedy_mesher::GreedyMesher, vertex::Vertex},
+    world::{terrain_generator::TerrainGenerator, world::World},
+};
 
 pub struct Chunk {
     pub blocks: [Block; CHUNK_VOLUME],
@@ -49,7 +53,7 @@ impl Chunk {
 
     pub fn terrain_gen(world_pos: Vector3<i64>, seed: u32) -> Self {
         let mut blocks = [Block::air(); CHUNK_VOLUME];
-        TerrainGenerator::heightmap(&world_pos, seed, &mut blocks);
+        TerrainGenerator::heightmap_advanced(&world_pos, seed, &mut blocks);
         Chunk {
             blocks,
             _pos: world_pos,
@@ -57,7 +61,7 @@ impl Chunk {
             is_dirty: true,
         }
     }
-    
+
     pub fn generate_mesh(&self, world: &World) -> (Vec<Vertex>, Vec<u32>) {
         if !self.is_rendered {
             return (Vec::new(), Vec::new());
@@ -67,7 +71,7 @@ impl Chunk {
             v.pos[0] += self._pos.x as f32 * CHUNK_SIZE as f32;
             v.pos[1] += self._pos.y as f32 * CHUNK_SIZE as f32;
             v.pos[2] += self._pos.z as f32 * CHUNK_SIZE as f32;
-        };
+        }
         (vertices, indices)
     }
 
@@ -75,12 +79,12 @@ impl Chunk {
         debug_assert!(x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE);
         x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE
     }
-    
+
     pub const fn from_index(i: usize) -> (usize, usize, usize) {
         (
             i % CHUNK_SIZE,
             (i / CHUNK_SIZE) % CHUNK_SIZE,
-            i / (CHUNK_SIZE * CHUNK_SIZE)
+            i / (CHUNK_SIZE * CHUNK_SIZE),
         )
     }
 

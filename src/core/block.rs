@@ -15,6 +15,7 @@ impl Block {
         Self {id: u16::MAX}
     }
     
+    #[inline(always)]
     pub fn is_transpose(&self) -> bool {
         self.id == Self::air().id
     }
