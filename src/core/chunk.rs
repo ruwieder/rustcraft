@@ -74,12 +74,14 @@ impl Chunk {
         }
         (vertices, indices)
     }
-
+    
+    #[inline(always)]
     pub const fn index(x: usize, y: usize, z: usize) -> usize {
         debug_assert!(x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE);
         x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE
     }
-
+    
+    #[inline(always)]
     pub const fn from_index(i: usize) -> (usize, usize, usize) {
         (
             i % CHUNK_SIZE,
@@ -87,16 +89,18 @@ impl Chunk {
             i / (CHUNK_SIZE * CHUNK_SIZE),
         )
     }
-
-    pub fn get(&self, x: usize, y: usize, z: usize) -> Option<Block> {
+    
+    #[inline(always)]
+    pub fn get(&self, x: usize, y: usize, z: usize) -> Block {
         debug_assert!(x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE);
-        Some(self.blocks[Self::index(x, y, z)])
+        self.blocks[Self::index(x, y, z)]
     }
 
-    pub fn get_from_world_pos(&self, world_pos: Vector3<i64>) -> Option<Block> {
+    pub fn get_from_world_pos(&self, world_pos: Vector3<i64>) -> Block {
         let x = world_pos.x.rem_euclid(CHUNK_SIZE as i64) as usize;
         let y = world_pos.y.rem_euclid(CHUNK_SIZE as i64) as usize;
         let z = world_pos.z.rem_euclid(CHUNK_SIZE as i64) as usize;
+        debug_assert!(x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE);
         self.get(x, y, z)
     }
 }

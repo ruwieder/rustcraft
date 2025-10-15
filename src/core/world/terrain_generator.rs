@@ -15,7 +15,7 @@ impl TerrainGenerator {
         seed: u32,
         blocks: &mut [Block; CHUNK_VOLUME],
     ) {
-        const BLOCK_ID: u16 = 0;
+        const BLOCK_ID: u16 = 1;
         const SCALE_XY: f32 = 0.001;
         const SCALE_Z: f32 = 24.0;
         if (world_pos.z * CHUNK_SIZE as i64) > SCALE_Z as i64 {
@@ -29,7 +29,7 @@ impl TerrainGenerator {
         }
         let mut noise_gen = FastNoiseLite::with_seed(seed as i32);
         noise_gen.set_fractal_type(Some(FractalType::FBm));
-        noise_gen.set_fractal_octaves(Some(1));
+        noise_gen.set_fractal_octaves(Some(2));
         noise_gen.set_frequency(Some(SCALE_XY));
         for x in 0..CHUNK_SIZE {for y in 0..CHUNK_SIZE {
             let height = noise_gen.get_noise_2d(

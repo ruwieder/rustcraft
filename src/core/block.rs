@@ -12,7 +12,7 @@ impl Block {
     }
     
     pub fn air() -> Self {
-        Self {id: u16::MAX}
+        Self {id: 0}
     }
     
     #[inline(always)]

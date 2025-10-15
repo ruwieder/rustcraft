@@ -96,8 +96,7 @@ impl GreedyMesher {
                         let exposed = if nx >= 0 && nx < CHUNK_SIZE as i64 &&
                                         ny >= 0 && ny < CHUNK_SIZE as i64 &&
                                         nz >= 0 && nz < CHUNK_SIZE as i64 {
-                            let block = chunk.get(nx as usize, ny as usize, nz as usize)
-                                .unwrap_or(Block::air());
+                            let block = chunk.get(nx as usize, ny as usize, nz as usize);
                             block.is_transpose()
                         } else {
                             let world_pos = Vector3::new(
@@ -123,7 +122,7 @@ impl GreedyMesher {
 
     fn is_face_exposed_new(world: &World, pos: Vector3<i64>) -> bool {
         if let Some(chunk) = world.get_chunk(&pos) {
-            let block = chunk.get_from_world_pos(pos).unwrap_or(Block::air());
+            let block = chunk.get_from_world_pos(pos);
             block.is_transpose()
         } else {
             false
@@ -162,13 +161,13 @@ impl GreedyMesher {
                     if visited.get(index) {
                         continue;
                     }
-                    let block = chunk.get(x, y, z).unwrap_or(Block::air());
+                    let block = chunk.get(x, y, z);
                     if block.is_transpose() { continue; }
                     if (exposed_cache[x][y][z] & (1 << direction)) == 0 {
                         continue;
                     }
                     let (quad_width, quad_height) = Self::find_quad(
-                        chunk, depth, u, v, &block, direction, 
+                        chunk, depth, u, v, block, direction, 
                         u_axis, v_axis, depth_axis, &visited, exposed_cache
                     );
 
@@ -213,7 +212,7 @@ impl GreedyMesher {
         depth: usize,
         start_u: usize,
         start_v: usize,
-        target_block: &Block,
+        target_block: Block,
         direction: usize,
         u_axis: Vector3<f32>,
         v_axis: Vector3<f32>,
@@ -244,8 +243,8 @@ impl GreedyMesher {
                     break;
                 }
 
-                let block = chunk.get(x, y, z).unwrap_or(Block::air());
-                if block != *target_block || block.is_transpose() {
+                let block = chunk.get(x, y, z);
+                if block != target_block || block.is_transpose() {
                     valid = false;
                     break;
                 }
@@ -278,8 +277,8 @@ impl GreedyMesher {
                     break;
                 }
 
-                let block = chunk.get(x, y, z).unwrap_or(Block::air());
-                if block != *target_block || block.is_transpose() {
+                let block = chunk.get(x, y, z);
+                if block != target_block || block.is_transpose() {
                     valid = false;
                     break;
                 }
@@ -340,8 +339,9 @@ impl GreedyMesher {
         }
         *index_offset += 4;
     }
-
-    fn get_position(u_axis: Vector3<f32>, v_axis: Vector3<f32>, depth_axis: Vector3<f32>, depth: usize, u: usize, v: usize) -> Vector3<f32> {
+    
+    #[inline]
+    const fn get_position(u_axis: Vector3<f32>, v_axis: Vector3<f32>, depth_axis: Vector3<f32>, depth: usize, u: usize, v: usize) -> Vector3<f32> {
         Vector3::new(
             u_axis.x * u as f32 + v_axis.x * v as f32 + depth_axis.x * depth as f32,
             u_axis.y * u as f32 + v_axis.y * v as f32 + depth_axis.y * depth as f32,

@@ -75,7 +75,7 @@ impl World {
     pub fn get_block(&self, world_pos: Vector3<i64>) -> Option<Block> {
         let chunk = self.get_chunk(&world_pos);
         if let Some(chunk) = chunk {
-            chunk.get_from_world_pos(world_pos)
+            Some(chunk.get_from_world_pos(world_pos))
         } else {
             None
         }
@@ -99,7 +99,7 @@ impl World {
             && chunk.is_rendered
         {
             let block = chunk.get_from_world_pos(neighbor);
-            block.unwrap_or(Block::air()).is_transpose()
+            block.is_transpose()
         } else {
             true
         }
