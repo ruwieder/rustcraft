@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use futures::executor::block_on;
 
 use crate::core::render::renderer::Renderer;
-use crate::core::world::world::World;
+use crate::world::World;
 
 use std::sync::Mutex;
 use once_cell::sync::Lazy;

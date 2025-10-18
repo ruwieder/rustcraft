@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use cgmath::{InnerSpace, Vector3};
 
-use crate::core::{chunk::{Chunk, CHUNK_SIZE}, render::camera::Camera, world::world::World};
+use crate::{core::{chunk::{Chunk, CHUNK_SIZE}, render::camera::Camera}, world::World};
 
 const LOAD_DISTANCE: i32 = 20;
 const LOAD_DISTANCE_Z: i32 = 5;

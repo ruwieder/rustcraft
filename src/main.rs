@@ -1,6 +1,6 @@
 mod core;
 mod app;
-
+mod world;
 use app::App;
 
 // gives about +5% performance in comparison to default, keep for now

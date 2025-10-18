@@ -1,5 +1,5 @@
 use cgmath::Vector3;
-use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE}, meshing::{generate_face, Vertex}, world::world::World};
+use crate::{core::{block::Block, chunk::{Chunk, CHUNK_SIZE}, meshing::{generate_face, Vertex}}, world::World};
 
 pub struct GreedyMesher;
 
@@ -8,7 +8,6 @@ impl GreedyMesher {
         if Self::is_only_air_fast(chunk) && Self::is_only_air(chunk) {
             return (Vec::new(), Vec::new());
         }
-        
         let normals = [
             Vector3::new(1.0, 0.0, 0.0), 
             Vector3::new(-1.0, 0.0, 0.0),

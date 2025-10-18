@@ -3,12 +3,11 @@ use wgpu::util::DeviceExt;
 use cgmath::{Vector2, Vector3};
 use hashbrown::HashMap;
 
-use crate::core::{chunk::Chunk, meshing::{Mesh, Vertex}, render::{camera::{Camera, UniformBuffer}, texture_array::TextureArray}, world::world::World};
+use crate::{core::{chunk::Chunk, meshing::{Mesh, Vertex}, render::{camera::{Camera, UniformBuffer}, texture_array::TextureArray}}, world::World};
 
 const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 1.0, a: 1.0 };
-const USE_GREEDY: bool = true;
 const RENDER_LOGGING: bool = cfg!(debug_assertions);
-const INITIAL_MESH_CAPACITY: usize = 1000;
+const INITIAL_MESH_CAPACITY: usize = 5_000;
 
 pub struct Renderer {
     pub device: Device,
@@ -42,7 +41,6 @@ impl Renderer {
             backends: Backends::PRIMARY,
             ..Default::default()
         });
-    
         let surface = instance.create_surface(window).unwrap();
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
