@@ -1,4 +1,5 @@
-use crate::core::render::vertex::Vertex;
+use crate::core::meshing::Vertex;
+
 
 pub struct Mesh {
     pub vertices: Vec<Vertex>,

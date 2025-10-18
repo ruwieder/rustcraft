@@ -1,14 +1,13 @@
 use cgmath::Vector3;
-
-use crate::core::render::vertex::Vertex;
+use crate::core::meshing::Vertex;
 
 pub fn generate_face(
     pos: Vector3<f32>,
     normal: Vector3<f32>,
-    tex_id: u32, // not used
+    tex_id: u32,
     width: f32,
     height: f32,
-) -> (Vec<Vertex>, Vec<u32>) {
+) -> (Vec<Vertex>, Vec<u32>) {    
     const ATLAS_WIDTH: f32 = 16.0;
     const ATLAS_HEIGHT: f32 = 16.0;
     const TEXTURE_SIZE: f32 = 16.0;

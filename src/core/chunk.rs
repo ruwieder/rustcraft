@@ -3,9 +3,7 @@ pub const CHUNK_VOLUME: usize = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 use cgmath::Vector3;
 
 use crate::core::{
-    Block,
-    render::{greedy_mesher::GreedyMesher, vertex::Vertex},
-    world::{terrain_generator::TerrainGenerator, world::World},
+    meshing::{GreedyMesher, Vertex}, world::{terrain_generator::TerrainGenerator, world::World}, block::Block
 };
 
 pub struct Chunk {

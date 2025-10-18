@@ -1,6 +1,5 @@
 use cgmath::Vector3;
-// use rayon::prelude::*;
-use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE}, render::{face_gen::generate_face, vertex::Vertex}, world::world::World};
+use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE}, meshing::{generate_face, Vertex}, world::world::World};
 
 pub struct GreedyMesher;
 
