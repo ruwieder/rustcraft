@@ -1,15 +1,15 @@
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Block {
-    pub id: u32,
+    pub id: u16,
 }
 
 #[allow(dead_code)]
 impl Block {
     pub fn new(block_type: BlockType) -> Self {
-        Self::from_id(block_type as u32)
+        Self::from_id(block_type as u16)
     }
 
-    pub fn from_id(block_id: u32) -> Self {
+    pub fn from_id(block_id: u16) -> Self {
         Self { id: block_id }
     }
 
@@ -23,7 +23,7 @@ impl Block {
     }
 }
 
-#[repr(u32)]
+#[repr(u16)]
 pub enum BlockType {
     Air = 0,
     Stone = 1,

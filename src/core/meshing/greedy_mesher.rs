@@ -387,7 +387,7 @@ impl GreedyMesher {
         let (quad_vertices, quad_indices) = generate_face(
             center_pos,
             normal,
-            block.id,
+            block.id as u32,
             quad_width as f32,
             quad_height as f32,
         );

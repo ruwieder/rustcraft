@@ -10,7 +10,10 @@ static GLOBAL: TCMalloc = TCMalloc;
 
 fn main() {
     TCMalloc::process_background_actions_thread();
-
+    
+    // give rayon 8MB stack per thread, since it grows with fat LTO optimizations
+    rayon::ThreadPoolBuilder::new().stack_size(8 * 1024 * 1024).build_global().unwrap();
+    
     simple_logger::SimpleLogger::new()
         .with_colors(true)
         .with_local_timestamps()

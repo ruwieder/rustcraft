@@ -29,30 +29,6 @@ impl Chunk {
         }
     }
 
-    pub fn new_fill(pos: Vector3<i64>, block_id: u32) -> Self {
-        let blocks = [Block::from_id(block_id); CHUNK_VOLUME];
-        Chunk {
-            blocks,
-            _pos: pos,
-            is_rendered: true,
-            is_dirty: true,
-        }
-    }
-
-    pub fn new_flat(pos: Vector3<i64>, block_id: u32) -> Self {
-        let mut blocks = [Block::air(); CHUNK_VOLUME];
-        for block in blocks.iter_mut().take(CHUNK_SIZE * CHUNK_SIZE) {
-            block.id = block_id;
-        }
-        blocks[CHUNK_SIZE * CHUNK_SIZE + 1].id = block_id;
-        Chunk {
-            blocks,
-            _pos: pos,
-            is_rendered: true,
-            is_dirty: true,
-        }
-    }
-
     pub fn terrain_gen(world_pos: Vector3<i64>, seed: u32) -> Self {
         let mut blocks = [Block::air(); CHUNK_VOLUME];
         TerrainGenerator::heightmap_advanced(&world_pos, seed, &mut blocks);

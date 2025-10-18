@@ -1,6 +1,5 @@
 /target
 /dev
-/benches
 perf.data
 perf.data.old
 flamegraph.svg
