@@ -56,7 +56,7 @@ impl GreedyMesher {
                 }
             }
         }
-        return true;
+        true
     }
 
     #[inline]
@@ -426,7 +426,7 @@ struct BitSet {
 
 impl BitSet {
     fn new(size: usize) -> Self {
-        let array_size = (size + 63) / 64;
+        let array_size = size.div_ceil(64);
         Self {
             data: vec![0; array_size],
             size,

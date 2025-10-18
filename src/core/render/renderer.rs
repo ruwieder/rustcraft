@@ -333,11 +333,9 @@ impl Renderer {
             render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
 
             for (key, gpu_mesh) in &self.mesh_cache {
-                if let Some(chunk) = world.chunks.get(key) {
-                    if chunk.is_dirty {
+                if let Some(chunk) = world.chunks.get(key) && chunk.is_dirty {
                         continue;
                     }
-                }
 
                 if !self.camera.frustum.check(key) {
                     continue;
@@ -345,13 +343,11 @@ impl Renderer {
 
                 if let (Some(vertex_buffer), Some(index_buffer)) =
                     (&gpu_mesh.vertex_buffer, &gpu_mesh.index_buffer)
-                {
-                    if gpu_mesh.index_count > 0 {
+                    && gpu_mesh.index_count > 0 {
                         render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                         render_pass.set_index_buffer(index_buffer.slice(..), IndexFormat::Uint32);
                         render_pass.draw_indexed(0..gpu_mesh.index_count, 0, 0..1);
                     }
-                }
             }
         }
 
@@ -379,7 +375,7 @@ impl Renderer {
     }
 
     fn update_gpu_mesh(&mut self, key: (i64, i64, i64), mesh: &Mesh) {
-        let gpu_mesh = self.mesh_cache.entry(key).or_insert_with(GpuMesh::default);
+        let gpu_mesh = self.mesh_cache.entry(key).or_default();
         if mesh.is_dirty && !mesh.vertices.is_empty() && !mesh.indices.is_empty() {
             gpu_mesh.vertex_buffer =
                 Some(self.device.create_buffer_init(&util::BufferInitDescriptor {

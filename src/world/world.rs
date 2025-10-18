@@ -43,7 +43,7 @@ impl World {
             .par_iter()
             .filter_map(|key| {
                 let chunk = self.chunks.get(key)?;
-                let mesh_data = chunk.generate_mesh(&self);
+                let mesh_data = chunk.generate_mesh(self);
                 Some((*key, mesh_data))
             })
             .collect();
@@ -82,11 +82,7 @@ impl World {
 
     pub fn get_block(&self, world_pos: Vector3<i64>) -> Option<Block> {
         let chunk = self.get_chunk(&world_pos);
-        if let Some(chunk) = chunk {
-            Some(chunk.get_from_world_pos(world_pos))
-        } else {
-            None
-        }
+        chunk.map(|chunk| chunk.get_from_world_pos(world_pos))
     }
 
     pub fn drop_chunk(&mut self, world_pos: Vector3<i64>) {

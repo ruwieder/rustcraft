@@ -38,6 +38,12 @@ pub struct App {
     pub last_mouse_pos: (f32, f32),
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl App {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
@@ -189,9 +195,9 @@ impl ApplicationHandler for App {
                 let now = Instant::now();
                 let delta_time = now.duration_since(self.last_time).as_secs_f64();
                 self.last_time = now;
-                let mut renderer = self.renderer.as_mut().unwrap();
+                let renderer = self.renderer.as_mut().unwrap();
                 self.world
-                    .update(Duration::from_secs_f32(0.2 / 60.0), &mut renderer);
+                    .update(Duration::from_secs_f32(0.2 / 60.0), renderer);
                 renderer.update_camera(
                     delta_time,
                     (
