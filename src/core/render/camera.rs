@@ -52,7 +52,8 @@ impl Camera {
     }
     
     pub fn update(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
-        let speed = 300.0 * dt as f32;
+        let dt = dt.min(1.0 / 10.0);
+        let speed = 80.0 * dt as f32;
         let rot_speed = 0.15 * dt as f32;
         self.rot.y += mouse_delta.0 * rot_speed; // Yaw (left-right)
         self.rot.x += mouse_delta.1 * rot_speed; // Pitch (up-down)
