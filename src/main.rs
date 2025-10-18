@@ -1,5 +1,5 @@
-mod core;
 mod app;
+mod core;
 mod world;
 use app::App;
 
@@ -10,14 +10,15 @@ static GLOBAL: TCMalloc = TCMalloc;
 
 fn main() {
     TCMalloc::process_background_actions_thread();
-    
+
     simple_logger::SimpleLogger::new()
         .with_colors(true)
         .with_local_timestamps()
         .with_level(log::LevelFilter::Warn)
         // .with_module_level("rustcraft", log::LevelFilter::Trace)
-        .init().unwrap();
-    
+        .init()
+        .unwrap();
+
     log::info!("hello world bruh");
     let event_loop = winit::event_loop::EventLoop::new().expect("Failed to create event loop");
     log::trace!("created init loop");

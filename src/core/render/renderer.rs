@@ -1,11 +1,26 @@
-use wgpu::*;
-use wgpu::util::DeviceExt;
 use cgmath::{Vector2, Vector3};
 use hashbrown::HashMap;
+use wgpu::util::DeviceExt;
+use wgpu::*;
 
-use crate::{core::{chunk::Chunk, meshing::{Mesh, Vertex}, render::{camera::{Camera, UniformBuffer}, texture_array::TextureArray}}, world::World};
+use crate::{
+    core::{
+        chunk::Chunk,
+        meshing::{Mesh, Vertex},
+        render::{
+            camera::{Camera, UniformBuffer},
+            texture_array::TextureArray,
+        },
+    },
+    world::World,
+};
 
-const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 1.0, a: 1.0 };
+const SKYBOX: Color = Color {
+    r: 65.0 / 255.0,
+    g: 200.0 / 255.0,
+    b: 1.0,
+    a: 1.0,
+};
 const RENDER_LOGGING: bool = cfg!(debug_assertions);
 const INITIAL_MESH_CAPACITY: usize = 5_000;
 
@@ -52,19 +67,17 @@ impl Renderer {
             .unwrap();
 
         let (device, queue) = adapter
-            .request_device(
-                &DeviceDescriptor {
-                    label: None,
-                    required_features: Features::empty(),
-                    required_limits: Limits::default(),
-                    memory_hints: MemoryHints::default(),
-                    experimental_features: ExperimentalFeatures::default(),
-                    trace: Trace::default(),
-                }
-            )
+            .request_device(&DeviceDescriptor {
+                label: None,
+                required_features: Features::empty(),
+                required_limits: Limits::default(),
+                memory_hints: MemoryHints::default(),
+                experimental_features: ExperimentalFeatures::default(),
+                trace: Trace::default(),
+            })
             .await
             .unwrap();
-        
+
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps.formats[0];
         let config = SurfaceConfiguration {
@@ -78,19 +91,19 @@ impl Renderer {
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
-        
+
         let depth_texture_format = TextureFormat::Depth24Plus;
         let depth_texture_view = Self::create_depth_texture(&device, &config, depth_texture_format);
-        
+
         let uniform_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&[UniformBuffer::default()]),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
-        
-        let uniform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            entries: &[
-                BindGroupLayoutEntry {
+
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                entries: &[BindGroupLayoutEntry {
                     binding: 0,
                     visibility: ShaderStages::VERTEX,
                     ty: BindingType::Buffer {
@@ -99,27 +112,24 @@ impl Renderer {
                         min_binding_size: None,
                     },
                     count: None,
-                },
-            ],
-            label: Some("uniform_bind_group_layout"),
-        });
-        
+                }],
+                label: Some("uniform_bind_group_layout"),
+            });
+
         let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &uniform_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-            ],
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
             label: Some("uniform_bind_group"),
         });
-        
+
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Shader"),
             source: ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
-        
+
         // let diffuse_bytes = include_bytes!("../../../assets/textures/stone.png");
         let texture_bytes: Vec<&[u8]> = vec![
             &include_bytes!("../../../assets/textures/air.png")[..],
@@ -128,29 +138,31 @@ impl Renderer {
             &include_bytes!("../../../assets/textures/grass.png")[..],
             // TODO
         ];
-        let texture_array = TextureArray::new(&device, &queue, &texture_bytes, Some("block_textures")).unwrap();
-        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2Array,
-                        multisampled: false,
+        let texture_array =
+            TextureArray::new(&device, &queue, &texture_bytes, Some("block_textures")).unwrap();
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2Array,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-            label: Some("texture_bind_group_layout"),
-        });
-        
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("texture_bind_group_layout"),
+            });
+
         let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &texture_bind_group_layout,
             entries: &[
@@ -165,13 +177,13 @@ impl Renderer {
             ],
             label: Some("texture_bind_group"),
         });
-        
+
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[&uniform_bind_group_layout, &texture_bind_group_layout],
             push_constant_ranges: &[],
         });
-        
+
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
@@ -217,7 +229,7 @@ impl Renderer {
             Vector2::new(0.0, 0.0),
             config.width as f32 / config.height as f32,
         );
-        
+
         let uniform = camera.get_uniform();
         queue.write_buffer(&uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
         log::debug!("renderer initialized");
@@ -238,8 +250,12 @@ impl Renderer {
             dirty_meshes: Vec::new(),
         }
     }
-    
-    fn create_depth_texture(device: &Device, config: &SurfaceConfiguration, format: TextureFormat) -> TextureView {
+
+    fn create_depth_texture(
+        device: &Device,
+        config: &SurfaceConfiguration,
+        format: TextureFormat,
+    ) -> TextureView {
         let depth_texture = device.create_texture(&TextureDescriptor {
             label: Some("Depth Texture"),
             size: Extent3d {
@@ -256,31 +272,38 @@ impl Renderer {
         });
         depth_texture.create_view(&TextureViewDescriptor::default())
     }
-    
+
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width == 0 || new_size.height == 0 {
             return;
         }
-        
+
         self.config.width = new_size.width;
         self.config.height = new_size.height;
         self.surface.configure(&self.device, &self.config);
         self.camera.aspect = self.config.width as f32 / self.config.height as f32;
-        
-        self.depth_texture = Self::create_depth_texture(&self.device, &self.config, self.depth_texture_format);
+
+        self.depth_texture =
+            Self::create_depth_texture(&self.device, &self.config, self.depth_texture_format);
     }
-    
+
     pub fn render(&mut self, world: &World) -> Result<(), SurfaceError> {
-        if RENDER_LOGGING { log::trace!("started render..."); }
+        if RENDER_LOGGING {
+            log::trace!("started render...");
+        }
         self.process_dirty_meshes(world);
-        
+
         let output = self.surface.get_current_texture()?;
-        let view = output.texture.create_view(&TextureViewDescriptor::default());
-    
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
-        
+        let view = output
+            .texture
+            .create_view(&TextureViewDescriptor::default());
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
         {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -304,23 +327,25 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-    
+
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
             render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
-            
+
             for (key, gpu_mesh) in &self.mesh_cache {
                 if let Some(chunk) = world.chunks.get(key) {
                     if chunk.is_dirty {
                         continue;
                     }
                 }
-                
+
                 if !self.camera.frustum.check(key) {
                     continue;
                 }
-                
-                if let (Some(vertex_buffer), Some(index_buffer)) = (&gpu_mesh.vertex_buffer, &gpu_mesh.index_buffer) {
+
+                if let (Some(vertex_buffer), Some(index_buffer)) =
+                    (&gpu_mesh.vertex_buffer, &gpu_mesh.index_buffer)
+                {
                     if gpu_mesh.index_count > 0 {
                         render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                         render_pass.set_index_buffer(index_buffer.slice(..), IndexFormat::Uint32);
@@ -329,76 +354,83 @@ impl Renderer {
                 }
             }
         }
-    
-        self.queue.submit(std::iter::once(encoder.finish()));        
+
+        self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
         Ok(())
     }
-    
-    
+
     fn process_dirty_meshes(&mut self, world: &World) {
         if self.dirty_meshes.is_empty() {
             return;
         }
-        
+
         let dirty_meshes = std::mem::take(&mut self.dirty_meshes);
-        
+
         for key in dirty_meshes {
             if let Some(mesh) = world.meshes.get(&key) {
                 self.update_gpu_mesh(key, mesh);
             }
         }
     }
-    
+
     pub fn mark_mesh_dirty(&mut self, key: (i64, i64, i64)) {
         self.dirty_meshes.push(key);
     }
-    
+
     fn update_gpu_mesh(&mut self, key: (i64, i64, i64), mesh: &Mesh) {
         let gpu_mesh = self.mesh_cache.entry(key).or_insert_with(GpuMesh::default);
         if mesh.is_dirty && !mesh.vertices.is_empty() && !mesh.indices.is_empty() {
-            gpu_mesh.vertex_buffer = Some(self.device.create_buffer_init(
-                &util::BufferInitDescriptor {
+            gpu_mesh.vertex_buffer =
+                Some(self.device.create_buffer_init(&util::BufferInitDescriptor {
                     label: Some(&format!("Vertex Buffer {:?}", key)),
                     contents: bytemuck::cast_slice(&mesh.vertices),
                     usage: BufferUsages::VERTEX,
-                }
-            ));
-            
-            gpu_mesh.index_buffer = Some(self.device.create_buffer_init(
-                &util::BufferInitDescriptor {
+                }));
+
+            gpu_mesh.index_buffer =
+                Some(self.device.create_buffer_init(&util::BufferInitDescriptor {
                     label: Some(&format!("Index Buffer {:?}", key)),
                     contents: bytemuck::cast_slice(&mesh.indices),
                     usage: BufferUsages::INDEX,
-                }
-            ));
-            
+                }));
+
             gpu_mesh.index_count = mesh.indices.len() as u32;
             gpu_mesh.version += 1;
-            
+
             if RENDER_LOGGING {
-                log::trace!("updated GPU mesh {:?} with {} indices", key, gpu_mesh.index_count);
+                log::trace!(
+                    "updated GPU mesh {:?} with {} indices",
+                    key,
+                    gpu_mesh.index_count
+                );
             }
         }
     }
 
     pub fn update_camera(&mut self, dt: f64, movement: (f32, f32, f32), mouse_delta: (f32, f32)) {
-        if movement.0 == 0.0 && movement.1 == 0.0 && movement.2 == 0.0 
-          && mouse_delta.0 == 0.0 && mouse_delta.1 == 0.0 {
+        if movement.0 == 0.0
+            && movement.1 == 0.0
+            && movement.2 == 0.0
+            && mouse_delta.0 == 0.0
+            && mouse_delta.1 == 0.0
+        {
             return;
         }
-        
+
         self.camera.update(dt, movement, mouse_delta);
         let uniform = self.camera.get_uniform();
-        self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
+        self.queue
+            .write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
     }
-    
+
     pub fn on_mesh_updated(&mut self, key: (i64, i64, i64)) {
         self.mark_mesh_dirty(key);
     }
-    
+
     pub fn cleanup_unused_meshes(&mut self, active_chunks: &HashMap<(i64, i64, i64), Chunk>) {
-        self.mesh_cache.retain(|key, _| active_chunks.contains_key(key));
+        self.mesh_cache
+            .retain(|key, _| active_chunks.contains_key(key));
     }
 }
 

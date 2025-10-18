@@ -83,7 +83,7 @@ impl Frustum {
         }
         true
     }
-    
+
     pub fn check(&self, world_pos: &(i64, i64, i64)) -> bool {
         let chunk_aabb_min = Point3::new(
             world_pos.0 as f32 * CHUNK_SIZE as f32,

@@ -17,19 +17,23 @@ impl TextureArray {
     ) -> Result<Self> {
         let mut textures = Vec::new();
         let mut dimensions = (0, 0);
-        
+
         for (i, bytes) in textures_data.iter().enumerate() {
             let img = image::load_from_memory(bytes)?;
             if i == 0 {
                 dimensions = img.dimensions();
             } else {
-                assert_eq!(dimensions, img.dimensions(), "All textures must have the same dimensions");
+                assert_eq!(
+                    dimensions,
+                    img.dimensions(),
+                    "All textures must have the same dimensions"
+                );
             }
             textures.push(img.to_rgba8());
         }
 
         let mip_level_count = Self::calculate_mip_level_count(dimensions.0);
-        
+
         let size = wgpu::Extent3d {
             width: dimensions.0,
             height: dimensions.1,
@@ -43,7 +47,9 @@ impl TextureArray {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         });
 
@@ -72,8 +78,16 @@ impl TextureArray {
                 },
             );
         }
-        
-        Self::generate_mipmaps(device, queue, &texture, dimensions.0, textures.len() as u32, mip_level_count, &textures);
+
+        Self::generate_mipmaps(
+            device,
+            queue,
+            &texture,
+            dimensions.0,
+            textures.len() as u32,
+            mip_level_count,
+            &textures,
+        );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
             dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -114,13 +128,13 @@ impl TextureArray {
         layers: u32,
         mip_level_count: u32,
         original_textures: &[image::RgbaImage],
-    ) {        
+    ) {
         for layer in 0..layers {
             let original_data = &original_textures[layer as usize];
             for mip_level in 1..mip_level_count {
                 let mip_size = (size >> mip_level).max(1);
                 let mip_data = Self::generate_mip_level(original_data, mip_level, size);
-                
+
                 queue.write_texture(
                     wgpu::TexelCopyTextureInfo {
                         texture,
@@ -147,15 +161,11 @@ impl TextureArray {
             }
         }
     }
-        
-    fn generate_mip_level(
-        original: &image::RgbaImage,
-        mip_level: u32,
-        base_size: u32,
-    ) -> Vec<u8> {
+
+    fn generate_mip_level(original: &image::RgbaImage, mip_level: u32, base_size: u32) -> Vec<u8> {
         let mip_size = (base_size >> mip_level).max(1);
         let mut mip_data = Vec::with_capacity((mip_size * mip_size * 4) as usize);
-        
+
         for y in 0..mip_size {
             for x in 0..mip_size {
                 let src_x = (x * (1 << mip_level)).min(base_size - 1);

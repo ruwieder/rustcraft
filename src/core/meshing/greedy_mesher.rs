@@ -1,5 +1,12 @@
+use crate::{
+    core::{
+        block::Block,
+        chunk::{CHUNK_SIZE, Chunk},
+        meshing::{Vertex, generate_face},
+    },
+    world::World,
+};
 use cgmath::Vector3;
-use crate::{core::{block::Block, chunk::{Chunk, CHUNK_SIZE}, meshing::{generate_face, Vertex}}, world::World};
 
 pub struct GreedyMesher;
 
@@ -9,22 +16,20 @@ impl GreedyMesher {
             return (Vec::new(), Vec::new());
         }
         let normals = [
-            Vector3::new(1.0, 0.0, 0.0), 
+            Vector3::new(1.0, 0.0, 0.0),
             Vector3::new(-1.0, 0.0, 0.0),
-            Vector3::new(0.0, 1.0, 0.0), 
+            Vector3::new(0.0, 1.0, 0.0),
             Vector3::new(0.0, -1.0, 0.0),
-            Vector3::new(0.0, 0.0, 1.0), 
+            Vector3::new(0.0, 0.0, 1.0),
             Vector3::new(0.0, 0.0, -1.0),
         ];
         // Precompute exposed faces for the entire chunk to avoid repeated world lookups
         let exposed_cache = Self::build_exposed_cache(chunk, world);
-        
+
         let direction_results: Vec<(Vec<Vertex>, Vec<u32>)> = normals
             .iter()
             .enumerate()
-            .map(|(dir, &normal)| {
-                Self::greedy_mesh_direction(chunk, normal, dir, &exposed_cache)
-            })
+            .map(|(dir, &normal)| Self::greedy_mesh_direction(chunk, normal, dir, &exposed_cache))
             .collect();
 
         let mut vertices = Vec::new();
@@ -39,17 +44,21 @@ impl GreedyMesher {
 
         (vertices, indices)
     }
-    
+
     fn is_only_air(chunk: &Chunk) -> bool {
-        for x in 0..CHUNK_SIZE { for y in 0..CHUNK_SIZE { for z in 0..CHUNK_SIZE {
-            let idx = Chunk::index(x, y, z);
-            if !chunk.blocks[idx].is_transpose() {
-                return false;
+        for x in 0..CHUNK_SIZE {
+            for y in 0..CHUNK_SIZE {
+                for z in 0..CHUNK_SIZE {
+                    let idx = Chunk::index(x, y, z);
+                    if !chunk.blocks[idx].is_transpose() {
+                        return false;
+                    }
+                }
             }
-        }}};
+        }
         return true;
     }
-    
+
     #[inline]
     fn is_only_air_fast(chunk: &Chunk) -> bool {
         const IDX_1: usize = Chunk::index(0, 0, 0);
@@ -60,18 +69,24 @@ impl GreedyMesher {
         const IDX_6: usize = Chunk::index(CHUNK_SIZE - 1, 0, CHUNK_SIZE - 1);
         const IDX_7: usize = Chunk::index(CHUNK_SIZE - 1, CHUNK_SIZE - 1, 0);
         const IDX_8: usize = Chunk::index(CHUNK_SIZE - 1, CHUNK_SIZE - 1, CHUNK_SIZE - 1);
-        chunk.blocks[IDX_1].is_transpose() && chunk.blocks[IDX_2].is_transpose()
-        && chunk.blocks[IDX_3].is_transpose() && chunk.blocks[IDX_4].is_transpose()
-        && chunk.blocks[IDX_5].is_transpose() && chunk.blocks[IDX_6].is_transpose()
-        && chunk.blocks[IDX_7].is_transpose() && chunk.blocks[IDX_8].is_transpose()
+        chunk.blocks[IDX_1].is_transpose()
+            && chunk.blocks[IDX_2].is_transpose()
+            && chunk.blocks[IDX_3].is_transpose()
+            && chunk.blocks[IDX_4].is_transpose()
+            && chunk.blocks[IDX_5].is_transpose()
+            && chunk.blocks[IDX_6].is_transpose()
+            && chunk.blocks[IDX_7].is_transpose()
+            && chunk.blocks[IDX_8].is_transpose()
     }
-    
-    
-    fn build_exposed_cache(chunk: &Chunk, world: &World) -> [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE] {
+
+    fn build_exposed_cache(
+        chunk: &Chunk,
+        world: &World,
+    ) -> [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE] {
         let mut cache = [[[0u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
         let chunk_world_base = Vector3::new(
             chunk._pos.x * CHUNK_SIZE as i64,
-            chunk._pos.y * CHUNK_SIZE as i64, 
+            chunk._pos.y * CHUNK_SIZE as i64,
             chunk._pos.z * CHUNK_SIZE as i64,
         );
 
@@ -79,21 +94,28 @@ impl GreedyMesher {
             for y in 0..CHUNK_SIZE {
                 for z in 0..CHUNK_SIZE {
                     let mut exposed_mask = 0u8;
-                    
+
                     let directions = [
-                        (1, 0, 0), (-1, 0, 0),
-                        (0, 1, 0), (0, -1, 0), 
-                        (0, 0, 1), (0, 0, -1),
+                        (1, 0, 0),
+                        (-1, 0, 0),
+                        (0, 1, 0),
+                        (0, -1, 0),
+                        (0, 0, 1),
+                        (0, 0, -1),
                     ];
-                    
+
                     for (dir, &(dx, dy, dz)) in directions.iter().enumerate() {
                         let nx = x as i64 + dx;
-                        let ny = y as i64 + dy; 
+                        let ny = y as i64 + dy;
                         let nz = z as i64 + dz;
-                        
-                        let exposed = if nx >= 0 && nx < CHUNK_SIZE as i64 &&
-                                        ny >= 0 && ny < CHUNK_SIZE as i64 &&
-                                        nz >= 0 && nz < CHUNK_SIZE as i64 {
+
+                        let exposed = if nx >= 0
+                            && nx < CHUNK_SIZE as i64
+                            && ny >= 0
+                            && ny < CHUNK_SIZE as i64
+                            && nz >= 0
+                            && nz < CHUNK_SIZE as i64
+                        {
                             let block = chunk.get(nx as usize, ny as usize, nz as usize);
                             block.is_transpose()
                         } else {
@@ -104,17 +126,17 @@ impl GreedyMesher {
                             );
                             Self::is_face_exposed_new(world, world_pos)
                         };
-                        
+
                         if exposed {
                             exposed_mask |= 1 << dir;
                         }
                     }
-                    
+
                     cache[x][y][z] = exposed_mask;
                 }
             }
         }
-        
+
         cache
     }
 
@@ -136,15 +158,27 @@ impl GreedyMesher {
         let mut vertices = Vec::with_capacity(1024);
         let mut indices = Vec::with_capacity(1024);
         let mut index_offset = 0u32;
-        
+
         let mut visited = BitSet::new(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
 
         let (u_axis, v_axis, depth_axis) = if normal.x.abs() > 0.5 {
-            (Vector3::new(0.0, 1.0, 0.0), Vector3::new(0.0, 0.0, 1.0), Vector3::new(1.0, 0.0, 0.0))
+            (
+                Vector3::new(0.0, 1.0, 0.0),
+                Vector3::new(0.0, 0.0, 1.0),
+                Vector3::new(1.0, 0.0, 0.0),
+            )
         } else if normal.y.abs() > 0.5 {
-            (Vector3::new(1.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 1.0), Vector3::new(0.0, 1.0, 0.0))
+            (
+                Vector3::new(1.0, 0.0, 0.0),
+                Vector3::new(0.0, 0.0, 1.0),
+                Vector3::new(0.0, 1.0, 0.0),
+            )
         } else {
-            (Vector3::new(1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0), Vector3::new(0.0, 0.0, 1.0))
+            (
+                Vector3::new(1.0, 0.0, 0.0),
+                Vector3::new(0.0, 1.0, 0.0),
+                Vector3::new(0.0, 0.0, 1.0),
+            )
         };
 
         for depth in 0..CHUNK_SIZE {
@@ -160,13 +194,24 @@ impl GreedyMesher {
                         continue;
                     }
                     let block = chunk.get(x, y, z);
-                    if block.is_transpose() { continue; }
+                    if block.is_transpose() {
+                        continue;
+                    }
                     if (exposed_cache[x][y][z] & (1 << direction)) == 0 {
                         continue;
                     }
                     let (quad_width, quad_height) = Self::find_quad(
-                        chunk, depth, u, v, block, direction, 
-                        u_axis, v_axis, depth_axis, &visited, exposed_cache
+                        chunk,
+                        depth,
+                        u,
+                        v,
+                        block,
+                        direction,
+                        u_axis,
+                        v_axis,
+                        depth_axis,
+                        &visited,
+                        exposed_cache,
                     );
 
                     if quad_width > 0 && quad_height > 0 {
@@ -189,10 +234,22 @@ impl GreedyMesher {
                         // Mark quad as visited
                         for du in 0..quad_width {
                             for dv in 0..quad_height {
-                                let quad_pos = Self::get_position(u_axis, v_axis, depth_axis, depth, u + du, v + dv);
-                                let (qx, qy, qz) = (quad_pos.x as usize, quad_pos.y as usize, quad_pos.z as usize);
+                                let quad_pos = Self::get_position(
+                                    u_axis,
+                                    v_axis,
+                                    depth_axis,
+                                    depth,
+                                    u + du,
+                                    v + dv,
+                                );
+                                let (qx, qy, qz) = (
+                                    quad_pos.x as usize,
+                                    quad_pos.y as usize,
+                                    quad_pos.z as usize,
+                                );
                                 if qx < CHUNK_SIZE && qy < CHUNK_SIZE && qz < CHUNK_SIZE {
-                                    let quad_index = qx * CHUNK_SIZE * CHUNK_SIZE + qy * CHUNK_SIZE + qz;
+                                    let quad_index =
+                                        qx * CHUNK_SIZE * CHUNK_SIZE + qy * CHUNK_SIZE + qz;
                                     visited.set(quad_index);
                                 }
                             }
@@ -227,9 +284,10 @@ impl GreedyMesher {
         for w in 1..max_width {
             let mut valid = true;
             for h in 0..quad_height {
-                let pos = Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
+                let pos =
+                    Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
                 let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
-                
+
                 if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE {
                     valid = false;
                     break;
@@ -252,18 +310,21 @@ impl GreedyMesher {
                     break;
                 }
             }
-            
-            if !valid { break; }
+
+            if !valid {
+                break;
+            }
             quad_width += 1;
         }
 
-        // Expand vertically with early break  
+        // Expand vertically with early break
         for h in 1..max_height {
             let mut valid = true;
             for w in 0..quad_width {
-                let pos = Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
+                let pos =
+                    Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
                 let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
-                
+
                 if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE {
                     valid = false;
                     break;
@@ -286,8 +347,10 @@ impl GreedyMesher {
                     break;
                 }
             }
-            
-            if !valid { break; }
+
+            if !valid {
+                break;
+            }
             quad_height += 1;
         }
 
@@ -310,11 +373,11 @@ impl GreedyMesher {
         index_offset: &mut u32,
     ) {
         let base_pos = Self::get_position(u_axis, v_axis, depth_axis, depth, u, v);
-        
+
         // Adjust position to be the center of the quad
         let center_offset_u = (quad_width as f32 - 1.0) * 0.5;
         let center_offset_v = (quad_height as f32 - 1.0) * 0.5;
-        
+
         let center_pos = Vector3::new(
             base_pos.x + u_axis.x * center_offset_u + v_axis.x * center_offset_v,
             base_pos.y + u_axis.y * center_offset_u + v_axis.y * center_offset_v,
@@ -337,9 +400,16 @@ impl GreedyMesher {
         }
         *index_offset += 4;
     }
-    
+
     #[inline]
-    const fn get_position(u_axis: Vector3<f32>, v_axis: Vector3<f32>, depth_axis: Vector3<f32>, depth: usize, u: usize, v: usize) -> Vector3<f32> {
+    const fn get_position(
+        u_axis: Vector3<f32>,
+        v_axis: Vector3<f32>,
+        depth_axis: Vector3<f32>,
+        depth: usize,
+        u: usize,
+        v: usize,
+    ) -> Vector3<f32> {
         Vector3::new(
             u_axis.x * u as f32 + v_axis.x * v as f32 + depth_axis.x * depth as f32,
             u_axis.y * u as f32 + v_axis.y * v as f32 + depth_axis.y * depth as f32,
@@ -364,14 +434,18 @@ impl BitSet {
     }
 
     fn get(&self, index: usize) -> bool {
-        if index >= self.size { return false; }
+        if index >= self.size {
+            return false;
+        }
         let word = index / 64;
         let bit = index % 64;
         (self.data[word] & (1 << bit)) != 0
     }
 
     fn set(&mut self, index: usize) {
-        if index >= self.size { return; }
+        if index >= self.size {
+            return;
+        }
         let word = index / 64;
         let bit = index % 64;
         self.data[word] |= 1 << bit;

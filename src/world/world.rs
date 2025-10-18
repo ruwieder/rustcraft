@@ -1,8 +1,16 @@
-use crate::core::{block::Block, chunk::{Chunk, CHUNK_SIZE}, meshing::{Mesh, Vertex}, render::renderer::Renderer};
+use crate::core::{
+    block::Block,
+    chunk::{CHUNK_SIZE, Chunk},
+    meshing::{Mesh, Vertex},
+    render::renderer::Renderer,
+};
 use cgmath::Vector3;
-use rayon::prelude::*;
-use std::{collections::{HashSet, VecDeque}, time::Duration};
 use hashbrown::HashMap;
+use rayon::prelude::*;
+use std::{
+    collections::{HashSet, VecDeque},
+    time::Duration,
+};
 
 pub struct World {
     pub chunks: HashMap<(i64, i64, i64), Chunk>,
@@ -22,15 +30,15 @@ impl World {
             need_to_load: VecDeque::new(),
         }
     }
-    
+
     pub fn update(&mut self, has_time: Duration, renderer: &mut Renderer) {
         self.loader_update(has_time, &renderer.camera);
         renderer.cleanup_unused_meshes(&self.chunks);
         self.update_meshes(renderer);
     }
-    
+
     fn update_meshes(&mut self, renderer: &mut Renderer) {
-        let dirty_chunks = std::mem::take(&mut self.dirty_chunks);        
+        let dirty_chunks = std::mem::take(&mut self.dirty_chunks);
         let mesh_updates: Vec<((i64, i64, i64), (Vec<Vertex>, Vec<u32>))> = dirty_chunks
             .par_iter()
             .filter_map(|key| {
@@ -53,7 +61,7 @@ impl World {
             }
         }
     }
-    
+
     pub fn load_chunk(&mut self, x: i64, y: i64, z: i64) {
         let key = (x, y, z);
         if !self.chunks.contains_key(&key) {
@@ -80,7 +88,7 @@ impl World {
             None
         }
     }
-    
+
     pub fn drop_chunk(&mut self, world_pos: Vector3<i64>) {
         let key = (world_pos.x, world_pos.y, world_pos.z);
         self.chunks.remove(&key);

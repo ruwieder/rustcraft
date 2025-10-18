@@ -1,21 +1,22 @@
+use futures::executor::block_on;
 use rand::RngCore;
+use std::time::{Duration, Instant};
 use winit::application::ApplicationHandler;
-use winit::event::{WindowEvent, ElementState, MouseButton};
+use winit::dpi::PhysicalSize;
+use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowAttributes};
-use winit::dpi::PhysicalSize;
-use std::time::{Duration, Instant};
-use futures::executor::block_on;
 
 use crate::core::render::renderer::Renderer;
 use crate::world::World;
 
-use std::sync::Mutex;
 use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 // leaked pointer, fuck safety
-static WINDOW_PTR: Lazy<Mutex<Option<&'static winit::window::Window>>> = Lazy::new(|| Mutex::new(None));
+static WINDOW_PTR: Lazy<Mutex<Option<&'static winit::window::Window>>> =
+    Lazy::new(|| Mutex::new(None));
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -59,7 +60,11 @@ impl App {
 
     // Helper method to get the window from the static
     fn get_window(&self) -> &'static Window {
-        WINDOW_PTR.lock().unwrap().as_ref().expect("Window not initialized")
+        WINDOW_PTR
+            .lock()
+            .unwrap()
+            .as_ref()
+            .expect("Window not initialized")
     }
 }
 
@@ -69,23 +74,23 @@ impl ApplicationHandler for App {
             let window_attributes = WindowAttributes::default()
                 .with_title("Rustcraft")
                 .with_inner_size(PhysicalSize::new(1280, 720));
-            
+
             // FIXME: absolute shit. leaking the window due to lifetime conflicts
             let window = event_loop.create_window(window_attributes).unwrap();
             let window_ref: &'static Window = Box::leak(Box::new(window));
             *WINDOW_PTR.lock().unwrap() = Some(window_ref);
             let renderer = block_on(Renderer::new(window_ref));
-            
+
             self.renderer = Some(renderer);
         }
     }
-    
+
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         if let Some(renderer) = self.renderer.take() {
             drop(renderer);
         }
     }
-    
+
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -93,8 +98,11 @@ impl ApplicationHandler for App {
         event: WindowEvent,
     ) {
         let window = self.get_window();
-        let renderer = self.renderer.as_mut().expect("Renderer should be initialized");
-        
+        let renderer = self
+            .renderer
+            .as_mut()
+            .expect("Renderer should be initialized");
+
         match event {
             WindowEvent::KeyboardInput { event, .. } => {
                 if let PhysicalKey::Code(key_code) = event.physical_key {
@@ -102,12 +110,18 @@ impl ApplicationHandler for App {
                         KeyCode::Escape => {
                             event_loop.exit();
                         }
-                        KeyCode::KeyW => self.movement.forward = event.state == ElementState::Pressed,
-                        KeyCode::KeyS => self.movement.backward = event.state == ElementState::Pressed,
+                        KeyCode::KeyW => {
+                            self.movement.forward = event.state == ElementState::Pressed
+                        }
+                        KeyCode::KeyS => {
+                            self.movement.backward = event.state == ElementState::Pressed
+                        }
                         KeyCode::KeyA => self.movement.left = event.state == ElementState::Pressed,
                         KeyCode::KeyD => self.movement.right = event.state == ElementState::Pressed,
                         KeyCode::Space => self.movement.up = event.state == ElementState::Pressed,
-                        KeyCode::ShiftLeft => self.movement.down = event.state == ElementState::Pressed,
+                        KeyCode::ShiftLeft => {
+                            self.movement.down = event.state == ElementState::Pressed
+                        }
                         _ => {}
                     }
                 }
@@ -138,9 +152,27 @@ impl ApplicationHandler for App {
                     renderer.update_camera(
                         0.016,
                         (
-                            if self.movement.forward { 1.0 } else if self.movement.backward { -1.0 } else { 0.0 },
-                            if self.movement.right { 1.0 } else if self.movement.left { -1.0 } else { 0.0 },
-                            if self.movement.up { 1.0 } else if self.movement.down { -1.0 } else { 0.0 },
+                            if self.movement.forward {
+                                1.0
+                            } else if self.movement.backward {
+                                -1.0
+                            } else {
+                                0.0
+                            },
+                            if self.movement.right {
+                                1.0
+                            } else if self.movement.left {
+                                -1.0
+                            } else {
+                                0.0
+                            },
+                            if self.movement.up {
+                                1.0
+                            } else if self.movement.down {
+                                -1.0
+                            } else {
+                                0.0
+                            },
                         ),
                         delta,
                     );
@@ -158,13 +190,32 @@ impl ApplicationHandler for App {
                 let delta_time = now.duration_since(self.last_time).as_secs_f64();
                 self.last_time = now;
                 let mut renderer = self.renderer.as_mut().unwrap();
-                self.world.update(Duration::from_secs_f32(0.2 / 60.0), &mut renderer);
+                self.world
+                    .update(Duration::from_secs_f32(0.2 / 60.0), &mut renderer);
                 renderer.update_camera(
                     delta_time,
                     (
-                        if self.movement.forward { 1.0 } else if self.movement.backward { -1.0 } else { 0.0 },
-                        if self.movement.right { 1.0 } else if self.movement.left { -1.0 } else { 0.0 },
-                        if self.movement.up { 1.0 } else if self.movement.down { -1.0 } else { 0.0 },
+                        if self.movement.forward {
+                            1.0
+                        } else if self.movement.backward {
+                            -1.0
+                        } else {
+                            0.0
+                        },
+                        if self.movement.right {
+                            1.0
+                        } else if self.movement.left {
+                            -1.0
+                        } else {
+                            0.0
+                        },
+                        if self.movement.up {
+                            1.0
+                        } else if self.movement.down {
+                            -1.0
+                        } else {
+                            0.0
+                        },
                     ),
                     (0.0, 0.0),
                 );

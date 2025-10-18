@@ -5,10 +5,10 @@ pub struct Block {
 
 #[allow(dead_code)]
 impl Block {
-    pub fn new(block_type: BlockType) -> Self{
+    pub fn new(block_type: BlockType) -> Self {
         Self::from_id(block_type as u32)
     }
-    
+
     pub fn from_id(block_id: u32) -> Self {
         Self { id: block_id }
     }
