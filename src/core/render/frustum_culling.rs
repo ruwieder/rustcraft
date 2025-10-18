@@ -1,5 +1,7 @@
 use cgmath::{InnerSpace, Matrix4, Point3, Vector4};
 
+use crate::core::chunk::CHUNK_SIZE;
+
 #[derive(Debug, Clone)]
 pub struct Frustum {
     pub planes: [Vector4<f32>; 6],
@@ -80,5 +82,19 @@ impl Frustum {
             }
         }
         true
+    }
+    
+    pub fn check(&self, world_pos: &(i64, i64, i64)) -> bool {
+        let chunk_aabb_min = Point3::new(
+            world_pos.0 as f32 * CHUNK_SIZE as f32,
+            world_pos.1 as f32 * CHUNK_SIZE as f32,
+            world_pos.2 as f32 * CHUNK_SIZE as f32,
+        );
+        let chunk_aabb_max = Point3::new(
+            (world_pos.0 + 1) as f32 * CHUNK_SIZE as f32,
+            (world_pos.1 + 1) as f32 * CHUNK_SIZE as f32,
+            (world_pos.2 + 1) as f32 * CHUNK_SIZE as f32,
+        );
+        self.intersects_aabb(chunk_aabb_min, chunk_aabb_max)
     }
 }

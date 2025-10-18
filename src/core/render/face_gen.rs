@@ -2,11 +2,10 @@ use cgmath::Vector3;
 
 use crate::core::render::vertex::Vertex;
 
-#[allow(unused_variables)]
 pub fn generate_face(
     pos: Vector3<f32>,
     normal: Vector3<f32>,
-    texture_id: u16, // not used
+    tex_id: u32, // not used
     width: f32,
     height: f32,
 ) -> (Vec<Vertex>, Vec<u32>) {
@@ -32,50 +31,50 @@ pub fn generate_face(
     let vertices = match normal {
         Vector3 { x: 1.0, .. } => {
             vec![
-                Vertex { pos: [pos.x + 0.5, pos.y - half_width, pos.z - half_height], tex_coord: uvs[3] },
-                Vertex { pos: [pos.x + 0.5, pos.y + half_width, pos.z - half_height], tex_coord: uvs[2] },
-                Vertex { pos: [pos.x + 0.5, pos.y + half_width, pos.z + half_height], tex_coord: uvs[1] },
-                Vertex { pos: [pos.x + 0.5, pos.y - half_width, pos.z + half_height], tex_coord: uvs[0] },
+                Vertex { pos: [pos.x + 0.5, pos.y - half_width, pos.z - half_height], tex_coord: uvs[3], tex_id },
+                Vertex { pos: [pos.x + 0.5, pos.y + half_width, pos.z - half_height], tex_coord: uvs[2], tex_id },
+                Vertex { pos: [pos.x + 0.5, pos.y + half_width, pos.z + half_height], tex_coord: uvs[1], tex_id },
+                Vertex { pos: [pos.x + 0.5, pos.y - half_width, pos.z + half_height], tex_coord: uvs[0], tex_id },
             ]
         },
         Vector3 { x: -1.0, .. } => {
             vec![
-                Vertex { pos: [pos.x - 0.5, pos.y + half_width, pos.z - half_height], tex_coord: uvs[3] },
-                Vertex { pos: [pos.x - 0.5, pos.y - half_width, pos.z - half_height], tex_coord: uvs[2] },
-                Vertex { pos: [pos.x - 0.5, pos.y - half_width, pos.z + half_height], tex_coord: uvs[1] },
-                Vertex { pos: [pos.x - 0.5, pos.y + half_width, pos.z + half_height], tex_coord: uvs[0] },
+                Vertex { pos: [pos.x - 0.5, pos.y + half_width, pos.z - half_height], tex_coord: uvs[3], tex_id },
+                Vertex { pos: [pos.x - 0.5, pos.y - half_width, pos.z - half_height], tex_coord: uvs[2], tex_id },
+                Vertex { pos: [pos.x - 0.5, pos.y - half_width, pos.z + half_height], tex_coord: uvs[1], tex_id },
+                Vertex { pos: [pos.x - 0.5, pos.y + half_width, pos.z + half_height], tex_coord: uvs[0], tex_id },
             ]
         },
         Vector3 { y: 1.0, .. } => {
             vec![
-                Vertex { pos: [pos.x + half_width, pos.y + 0.5, pos.z - half_height], tex_coord: uvs[2] },
-                Vertex { pos: [pos.x - half_width, pos.y + 0.5, pos.z - half_height], tex_coord: uvs[3] },
-                Vertex { pos: [pos.x - half_width, pos.y + 0.5, pos.z + half_height], tex_coord: uvs[0] },
-                Vertex { pos: [pos.x + half_width, pos.y + 0.5, pos.z + half_height], tex_coord: uvs[1] },
+                Vertex { pos: [pos.x + half_width, pos.y + 0.5, pos.z - half_height], tex_coord: uvs[2], tex_id },
+                Vertex { pos: [pos.x - half_width, pos.y + 0.5, pos.z - half_height], tex_coord: uvs[3], tex_id },
+                Vertex { pos: [pos.x - half_width, pos.y + 0.5, pos.z + half_height], tex_coord: uvs[0], tex_id },
+                Vertex { pos: [pos.x + half_width, pos.y + 0.5, pos.z + half_height], tex_coord: uvs[1], tex_id },
             ]
         },
         Vector3 { y: -1.0, .. } => {
             vec![
-                Vertex { pos: [pos.x + half_width, pos.y - 0.5, pos.z + half_height], tex_coord: uvs[1] },
-                Vertex { pos: [pos.x - half_width, pos.y - 0.5, pos.z + half_height], tex_coord: uvs[0] },
-                Vertex { pos: [pos.x - half_width, pos.y - 0.5, pos.z - half_height], tex_coord: uvs[3] },
-                Vertex { pos: [pos.x + half_width, pos.y - 0.5, pos.z - half_height], tex_coord: uvs[2] },
+                Vertex { pos: [pos.x + half_width, pos.y - 0.5, pos.z + half_height], tex_coord: uvs[1], tex_id },
+                Vertex { pos: [pos.x - half_width, pos.y - 0.5, pos.z + half_height], tex_coord: uvs[0], tex_id },
+                Vertex { pos: [pos.x - half_width, pos.y - 0.5, pos.z - half_height], tex_coord: uvs[3], tex_id },
+                Vertex { pos: [pos.x + half_width, pos.y - 0.5, pos.z - half_height], tex_coord: uvs[2], tex_id },
             ]
         },
         Vector3 { z: 1.0, .. } => {
             vec![
-                Vertex { pos: [pos.x - half_width, pos.y - half_height, pos.z + 0.5], tex_coord: uvs[1] },
-                Vertex { pos: [pos.x + half_width, pos.y - half_height, pos.z + 0.5], tex_coord: uvs[0] },
-                Vertex { pos: [pos.x + half_width, pos.y + half_height, pos.z + 0.5], tex_coord: uvs[3] },
-                Vertex { pos: [pos.x - half_width, pos.y + half_height, pos.z + 0.5], tex_coord: uvs[2] },
+                Vertex { pos: [pos.x - half_width, pos.y - half_height, pos.z + 0.5], tex_coord: uvs[1], tex_id },
+                Vertex { pos: [pos.x + half_width, pos.y - half_height, pos.z + 0.5], tex_coord: uvs[0], tex_id },
+                Vertex { pos: [pos.x + half_width, pos.y + half_height, pos.z + 0.5], tex_coord: uvs[3], tex_id },
+                Vertex { pos: [pos.x - half_width, pos.y + half_height, pos.z + 0.5], tex_coord: uvs[2], tex_id },
             ]
         },
         Vector3 { z: -1.0, .. } => {
             vec![
-                Vertex { pos: [pos.x + half_width, pos.y - half_height, pos.z - 0.5], tex_coord: uvs[1] },
-                Vertex { pos: [pos.x - half_width, pos.y - half_height, pos.z - 0.5], tex_coord: uvs[0] },
-                Vertex { pos: [pos.x - half_width, pos.y + half_height, pos.z - 0.5], tex_coord: uvs[3] },
-                Vertex { pos: [pos.x + half_width, pos.y + half_height, pos.z - 0.5], tex_coord: uvs[2] },
+                Vertex { pos: [pos.x + half_width, pos.y - half_height, pos.z - 0.5], tex_coord: uvs[1], tex_id },
+                Vertex { pos: [pos.x - half_width, pos.y - half_height, pos.z - 0.5], tex_coord: uvs[0], tex_id },
+                Vertex { pos: [pos.x - half_width, pos.y + half_height, pos.z - 0.5], tex_coord: uvs[3], tex_id },
+                Vertex { pos: [pos.x + half_width, pos.y + half_height, pos.z - 0.5], tex_coord: uvs[2], tex_id },
             ]
         },
         _ => Vec::new(),

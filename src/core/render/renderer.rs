@@ -1,9 +1,9 @@
 use wgpu::*;
 use wgpu::util::DeviceExt;
-use cgmath::{Point3, Vector2, Vector3};
+use cgmath::{Vector2, Vector3};
 use hashbrown::HashMap;
 
-use crate::core::{chunk::{Chunk, CHUNK_SIZE}, mesh::Mesh, render::{camera::{Camera, UniformBuffer}, texture, vertex::Vertex}, world::world::World};
+use crate::core::{chunk::Chunk, mesh::Mesh, render::{camera::{Camera, UniformBuffer}, texture_array::TextureArray, vertex::Vertex}, world::world::World};
 
 const SKYBOX: Color = Color{ r: 65.0 / 255.0, g: 200.0 / 255.0, b: 1.0, a: 1.0 };
 const USE_GREEDY: bool = true;
@@ -21,7 +21,7 @@ pub struct Renderer {
     pub camera: Camera,
     depth_texture: TextureView, // Store view instead of texture
     pub texture_bind_group: BindGroup,
-    pub texture: texture::Texture,
+    pub texture_array: TextureArray,
     depth_texture_format: TextureFormat,
     mesh_cache: HashMap<(i64, i64, i64), GpuMesh>,
     dirty_meshes: Vec<(i64, i64, i64)>,
@@ -51,7 +51,7 @@ impl Renderer {
             })
             .await
             .unwrap();
-        
+
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
@@ -121,8 +121,15 @@ impl Renderer {
             source: ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
         
-        let diffuse_bytes = include_bytes!("../../../assets/textures/stone.png");
-        let texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "atlas.png").unwrap();
+        // let diffuse_bytes = include_bytes!("../../../assets/textures/stone.png");
+        let texture_bytes: Vec<&[u8]> = vec![
+            &include_bytes!("../../../assets/textures/air.png")[..],
+            &include_bytes!("../../../assets/textures/stone.png")[..],
+            &include_bytes!("../../../assets/textures/dirt.png")[..],
+            &include_bytes!("../../../assets/textures/grass.png")[..],
+            // TODO
+        ];
+        let texture_array = TextureArray::new(&device, &queue, &texture_bytes, Some("block_textures")).unwrap();
         let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
                 BindGroupLayoutEntry {
@@ -130,7 +137,7 @@ impl Renderer {
                     visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Texture {
                         sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
+                        view_dimension: TextureViewDimension::D2Array,
                         multisampled: false,
                     },
                     count: None,
@@ -150,14 +157,14 @@ impl Renderer {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: BindingResource::TextureView(&texture.view),
+                    resource: BindingResource::TextureView(&texture_array.view),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::Sampler(&texture.sampler),
+                    resource: BindingResource::Sampler(&texture_array.sampler),
                 },
             ],
-            label: Some("diffuse_bind_group"),
+            label: Some("texture_bind_group"),
         });
         
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -226,7 +233,7 @@ impl Renderer {
             camera,
             depth_texture: depth_texture_view,
             texture_bind_group,
-            texture,
+            texture_array,
             depth_texture_format,
             mesh_cache: HashMap::with_capacity(INITIAL_MESH_CAPACITY),
             dirty_meshes: Vec::new(),
@@ -275,8 +282,6 @@ impl Renderer {
             label: Some("Render Encoder"),
         });
         
-        let frustum = &self.camera.frustum;
-
         {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -305,9 +310,6 @@ impl Renderer {
             render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
             render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
             
-            let mut count_rendered = 0;
-            let mut total_triangles = 0;
-            
             for (key, gpu_mesh) in &self.mesh_cache {
                 if let Some(chunk) = world.chunks.get(key) {
                     if chunk.is_dirty {
@@ -315,20 +317,7 @@ impl Renderer {
                     }
                 }
                 
-                // Frustum culling check
-                let chunk_aabb_min = Point3::new(
-                    key.0 as f32 * CHUNK_SIZE as f32,
-                    key.1 as f32 * CHUNK_SIZE as f32,
-                    key.2 as f32 * CHUNK_SIZE as f32,
-                );
-                let chunk_aabb_max = Point3::new(
-                    (key.0 + 1) as f32 * CHUNK_SIZE as f32,
-                    (key.1 + 1) as f32 * CHUNK_SIZE as f32,
-                    (key.2 + 1) as f32 * CHUNK_SIZE as f32,
-                );
-                
-                if !frustum.intersects_aabb(chunk_aabb_min, chunk_aabb_max) {
-                    // count_culled += 1;
+                if !self.camera.frustum.check(key) {
                     continue;
                 }
                 
@@ -337,20 +326,13 @@ impl Renderer {
                         render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                         render_pass.set_index_buffer(index_buffer.slice(..), IndexFormat::Uint32);
                         render_pass.draw_indexed(0..gpu_mesh.index_count, 0, 0..1);
-                        count_rendered += 1;
-                        total_triangles += gpu_mesh.index_count / 3;
                     }
                 }
-            }
-            
-            if RENDER_LOGGING { 
-                log::trace!("rendered {} meshes ({} triangles)", count_rendered, total_triangles);
             }
         }
     
         self.queue.submit(std::iter::once(encoder.finish()));        
         output.present();
-        if RENDER_LOGGING { log::trace!("render pass done"); }
         Ok(())
     }
     

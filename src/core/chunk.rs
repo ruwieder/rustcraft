@@ -27,8 +27,8 @@ impl Chunk {
         }
     }
 
-    pub fn new_fill(pos: Vector3<i64>, block_id: u16) -> Self {
-        let blocks = [Block::new(block_id); CHUNK_VOLUME];
+    pub fn new_fill(pos: Vector3<i64>, block_id: u32) -> Self {
+        let blocks = [Block::from_id(block_id); CHUNK_VOLUME];
         Chunk {
             blocks,
             _pos: pos,
@@ -37,7 +37,7 @@ impl Chunk {
         }
     }
 
-    pub fn new_flat(pos: Vector3<i64>, block_id: u16) -> Self {
+    pub fn new_flat(pos: Vector3<i64>, block_id: u32) -> Self {
         let mut blocks = [Block::air(); CHUNK_VOLUME];
         for block in blocks.iter_mut().take(CHUNK_SIZE * CHUNK_SIZE) {
             block.id = block_id;
@@ -74,13 +74,13 @@ impl Chunk {
         }
         (vertices, indices)
     }
-    
+
     #[inline(always)]
     pub const fn index(x: usize, y: usize, z: usize) -> usize {
         debug_assert!(x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE);
         x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE
     }
-    
+
     #[inline(always)]
     pub const fn from_index(i: usize) -> (usize, usize, usize) {
         (
@@ -89,7 +89,7 @@ impl Chunk {
             i / (CHUNK_SIZE * CHUNK_SIZE),
         )
     }
-    
+
     #[inline(always)]
     pub fn get(&self, x: usize, y: usize, z: usize) -> Block {
         debug_assert!(x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE);
