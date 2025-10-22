@@ -10,23 +10,25 @@ use cgmath::Vector3;
 
 pub struct GreedyMesher;
 
+const DIRECTIONS: [Vector3<f32>; 6] = [
+    Vector3{x: 1.0, y: 0.0, z: 0.0},
+    Vector3{x: -1.0, y: 0.0, z: 0.0},
+    Vector3{x: 0.0, y: 1.0, z: 0.0},
+    Vector3{x: 0.0, y: -1.0, z: 0.0},
+    Vector3{x: 0.0, y: 0.0, z: 1.0},
+    Vector3{x: 0.0, y: 0.0, z: -1.0},
+];
+
 impl GreedyMesher {
     pub fn build_mesh(chunk: &Chunk, world: &World) -> (Vec<Vertex>, Vec<u32>) {
         if Self::is_only_air_fast(chunk) && Self::is_only_air(chunk) {
             return (Vec::new(), Vec::new());
         }
-        let normals = [
-            Vector3::new(1.0, 0.0, 0.0),
-            Vector3::new(-1.0, 0.0, 0.0),
-            Vector3::new(0.0, 1.0, 0.0),
-            Vector3::new(0.0, -1.0, 0.0),
-            Vector3::new(0.0, 0.0, 1.0),
-            Vector3::new(0.0, 0.0, -1.0),
-        ];
+
         // Precompute exposed faces for the entire chunk to avoid repeated world lookups
         let exposed_cache = Self::build_exposed_cache(chunk, world);
 
-        let direction_results: Vec<(Vec<Vertex>, Vec<u32>)> = normals
+        let direction_results: Vec<(Vec<Vertex>, Vec<u32>)> = DIRECTIONS
             .iter()
             .enumerate()
             .map(|(dir, &normal)| Self::greedy_mesh_direction(chunk, normal, dir, &exposed_cache))
@@ -95,16 +97,8 @@ impl GreedyMesher {
                 for z in 0..CHUNK_SIZE {
                     let mut exposed_mask = 0u8;
 
-                    let directions = [
-                        (1, 0, 0),
-                        (-1, 0, 0),
-                        (0, 1, 0),
-                        (0, -1, 0),
-                        (0, 0, 1),
-                        (0, 0, -1),
-                    ];
-
-                    for (dir, &(dx, dy, dz)) in directions.iter().enumerate() {
+                    for (dir, &normal) in DIRECTIONS.iter().enumerate() {
+                        let (dx, dy, dz) = (normal.x as i64, normal.y as i64, normal.z as i64);
                         let nx = x as i64 + dx;
                         let ny = y as i64 + dy;
                         let nz = z as i64 + dz;
@@ -402,36 +396,24 @@ impl GreedyMesher {
     }
 }
 
-// Simple bit set for efficient visited tracking
 struct BitSet {
     data: Vec<u64>,
-    size: usize,
 }
 
 impl BitSet {
     fn new(size: usize) -> Self {
-        let array_size = size.div_ceil(64);
         Self {
-            data: vec![0; array_size],
-            size,
+            data: vec![0; size.div_ceil(64)],
         }
     }
-
+    
+    #[inline(always)]
     fn get(&self, index: usize) -> bool {
-        if index >= self.size {
-            return false;
-        }
-        let word = index / 64;
-        let bit = index % 64;
-        (self.data[word] & (1 << bit)) != 0
+        (self.data[index / 64] & (1 << (index % 64))) != 0
     }
-
+    
+    #[inline(always)]
     fn set(&mut self, index: usize) {
-        if index >= self.size {
-            return;
-        }
-        let word = index / 64;
-        let bit = index % 64;
-        self.data[word] |= 1 << bit;
+        self.data[index / 64] |= 1 << (index % 64);
     }
 }
