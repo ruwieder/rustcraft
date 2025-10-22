@@ -19,6 +19,11 @@ const DIRECTIONS: [Vector3<f32>; 6] = [
     Vector3{x: 0.0, y: 0.0, z: -1.0},
 ];
 
+#[inline(always)]
+const fn face_index(x: usize, y: usize, z: usize, dir: usize) -> usize {
+    dir + 6 * (x * CHUNK_SIZE * CHUNK_SIZE + y * CHUNK_SIZE + z)
+}
+
 impl GreedyMesher {
     pub fn build_mesh(chunk: &Chunk, world: &World) -> (Vec<Vertex>, Vec<u32>) {
         if Self::is_only_air_fast(chunk) && Self::is_only_air(chunk) {
@@ -84,8 +89,8 @@ impl GreedyMesher {
     fn build_exposed_cache(
         chunk: &Chunk,
         world: &World,
-    ) -> [[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE] {
-        let mut cache = [[[0u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
+    ) -> BitSet {
+        let mut cache = BitSet::new(6 * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
         let chunk_world_base = Vector3::new(
             chunk._pos.x * CHUNK_SIZE as i64,
             chunk._pos.y * CHUNK_SIZE as i64,
@@ -95,8 +100,6 @@ impl GreedyMesher {
         for x in 0..CHUNK_SIZE {
             for y in 0..CHUNK_SIZE {
                 for z in 0..CHUNK_SIZE {
-                    let mut exposed_mask = 0u8;
-
                     for (dir, &normal) in DIRECTIONS.iter().enumerate() {
                         let (dx, dy, dz) = (normal.x as i64, normal.y as i64, normal.z as i64);
                         let nx = x as i64 + dx;
@@ -121,12 +124,8 @@ impl GreedyMesher {
                             Self::is_face_exposed_new(world, world_pos)
                         };
 
-                        if exposed {
-                            exposed_mask |= 1 << dir;
-                        }
+                        cache.set_if(face_index(x, y, z, dir), exposed);
                     }
-
-                    cache[x][y][z] = exposed_mask;
                 }
             }
         }
@@ -146,8 +145,8 @@ impl GreedyMesher {
     fn greedy_mesh_direction(
         chunk: &Chunk,
         normal: Vector3<f32>,
-        direction: usize,
-        exposed_cache: &[[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE],
+        dir: usize,
+        exposed_cache: &BitSet,
     ) -> (Vec<Vertex>, Vec<u32>) {
         let mut vertices = Vec::with_capacity(1024);
         let mut indices = Vec::with_capacity(1024);
@@ -191,7 +190,7 @@ impl GreedyMesher {
                     if block.is_transpose() {
                         continue;
                     }
-                    if (exposed_cache[x][y][z] & (1 << direction)) == 0 {
+                    if !exposed_cache.get(face_index(x, y, z, dir)) {
                         continue;
                     }
                     let (quad_width, quad_height) = Self::find_quad(
@@ -200,7 +199,7 @@ impl GreedyMesher {
                         u,
                         v,
                         block,
-                        direction,
+                        dir,
                         u_axis,
                         v_axis,
                         depth_axis,
@@ -262,19 +261,19 @@ impl GreedyMesher {
         start_u: usize,
         start_v: usize,
         target_block: Block,
-        direction: usize,
+        dir: usize,
         u_axis: Vector3<f32>,
         v_axis: Vector3<f32>,
         depth_axis: Vector3<f32>,
         visited: &BitSet,
-        exposed_cache: &[[[u8; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE],
+        exposed_cache: &BitSet,
     ) -> (usize, usize) {
         let max_width = CHUNK_SIZE - start_u;
         let max_height = CHUNK_SIZE - start_v;
         let mut quad_width = 1;
         let mut quad_height = 1;
 
-        // Expand horizontally with early break
+        // Expand horizontally
         'outer:
         for w in 1..max_width {
             for h in 0..quad_height {
@@ -296,14 +295,14 @@ impl GreedyMesher {
                     break 'outer;
                 }
 
-                if (exposed_cache[x][y][z] & (1 << direction)) == 0 {
+                if !exposed_cache.get(face_index(x, y, z, dir)) {
                     break 'outer;
                 }
             }
             quad_width += 1;
         }
 
-        // Expand vertically with early break
+        // Expand vertically
         'outer:
         for h in 1..max_height {
             for w in 0..quad_width {
@@ -325,7 +324,7 @@ impl GreedyMesher {
                     break 'outer;
                 }
 
-                if (exposed_cache[x][y][z] & (1 << direction)) == 0 {
+                if !exposed_cache.get(face_index(x, y, z, dir)) {
                     break 'outer;
                 }
             }
@@ -397,23 +396,31 @@ impl GreedyMesher {
 }
 
 struct BitSet {
-    data: Vec<u64>,
+    data: Vec<usize>,
 }
 
 impl BitSet {
     fn new(size: usize) -> Self {
         Self {
-            data: vec![0; size.div_ceil(64)],
+            data: vec![0; size.div_ceil(std::mem::size_of::<usize>() * 8)],
         }
     }
     
     #[inline(always)]
     fn get(&self, index: usize) -> bool {
-        (self.data[index / 64] & (1 << (index % 64))) != 0
+        const SIZE: usize = std::mem::size_of::<usize>() * 8;
+        (self.data[index / SIZE] & (1 << (index % SIZE))) != 0
     }
     
     #[inline(always)]
     fn set(&mut self, index: usize) {
-        self.data[index / 64] |= 1 << (index % 64);
+        const SIZE: usize = std::mem::size_of::<usize>() * 8;
+        self.data[index / SIZE] |= 1 << (index % SIZE);
+    }
+    
+    #[inline(always)]
+    fn set_if(&mut self, index: usize, flag: bool) {
+        const SIZE: usize = std::mem::size_of::<usize>() * 8;
+        self.data[index / SIZE] |= (flag as usize) << (index % SIZE);
     }
 }
