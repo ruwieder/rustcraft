@@ -281,75 +281,59 @@ impl GreedyMesher {
         let mut quad_height = 1;
 
         // Expand horizontally with early break
+        'outer:
         for w in 1..max_width {
-            let mut valid = true;
             for h in 0..quad_height {
                 let pos =
                     Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
                 let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
 
                 if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE {
-                    valid = false;
-                    break;
+                    break 'outer;
                 }
 
                 let index = x * CHUNK_SIZE * CHUNK_SIZE + y * CHUNK_SIZE + z;
                 if visited.get(index) {
-                    valid = false;
-                    break;
+                    break 'outer;
                 }
 
                 let block = chunk.get(x, y, z);
                 if block != target_block || block.is_transpose() {
-                    valid = false;
-                    break;
+                    break 'outer;
                 }
 
                 if (exposed_cache[x][y][z] & (1 << direction)) == 0 {
-                    valid = false;
-                    break;
+                    break 'outer;
                 }
-            }
-
-            if !valid {
-                break;
             }
             quad_width += 1;
         }
 
         // Expand vertically with early break
+        'outer:
         for h in 1..max_height {
-            let mut valid = true;
             for w in 0..quad_width {
                 let pos =
                     Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
                 let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
 
                 if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE {
-                    valid = false;
-                    break;
+                    break 'outer;
                 }
 
                 let index = x * CHUNK_SIZE * CHUNK_SIZE + y * CHUNK_SIZE + z;
                 if visited.get(index) {
-                    valid = false;
-                    break;
+                    break 'outer;
                 }
 
                 let block = chunk.get(x, y, z);
                 if block != target_block || block.is_transpose() {
-                    valid = false;
-                    break;
+                    break 'outer;
                 }
 
                 if (exposed_cache[x][y][z] & (1 << direction)) == 0 {
-                    valid = false;
-                    break;
+                    break 'outer;
                 }
-            }
-
-            if !valid {
-                break;
             }
             quad_height += 1;
         }
