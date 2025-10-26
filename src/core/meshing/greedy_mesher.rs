@@ -8,21 +8,28 @@ use crate::{
 };
 use cgmath::Vector3;
 
-pub struct GreedyMesher;
-
 const DIRECTIONS: [Vector3<f32>; 6] = [
-    Vector3{x: 1.0, y: 0.0, z: 0.0},
-    Vector3{x: -1.0, y: 0.0, z: 0.0},
-    Vector3{x: 0.0, y: 1.0, z: 0.0},
-    Vector3{x: 0.0, y: -1.0, z: 0.0},
-    Vector3{x: 0.0, y: 0.0, z: 1.0},
-    Vector3{x: 0.0, y: 0.0, z: -1.0},
+    Vector3 { x:  1.0, y:  0.0, z:  0.0 },
+    Vector3 { x: -1.0, y:  0.0, z:  0.0 },
+    Vector3 { x:  0.0, y:  1.0, z:  0.0 },
+    Vector3 { x:  0.0, y: -1.0, z:  0.0 },
+    Vector3 { x:  0.0, y:  0.0, z:  1.0 },
+    Vector3 { x:  0.0, y:  0.0, z: -1.0 },
 ];
+
+const fn get_block(chunk: &Chunk, x: usize, y: usize, z: usize) -> Block {
+    chunk.get(x * SCALE, y * SCALE, z * SCALE)
+}
+
+const SCALE: usize = 4;
+const MACRO_COUNT: usize = CHUNK_SIZE / SCALE;
 
 #[inline(always)]
 const fn face_index(x: usize, y: usize, z: usize, dir: usize) -> usize {
-    dir + 6 * (x * CHUNK_SIZE * CHUNK_SIZE + y * CHUNK_SIZE + z)
+    dir + 6 * (x * MACRO_COUNT * MACRO_COUNT + y * MACRO_COUNT + z)
 }
+
+pub struct GreedyMesher;
 
 impl GreedyMesher {
     pub fn build_mesh(chunk: &Chunk, world: &World) -> (Vec<Vertex>, Vec<u32>) {
@@ -53,11 +60,11 @@ impl GreedyMesher {
     }
 
     fn is_only_air(chunk: &Chunk) -> bool {
-        for x in 0..CHUNK_SIZE {
-            for y in 0..CHUNK_SIZE {
-                for z in 0..CHUNK_SIZE {
-                    let idx = Chunk::index(x, y, z);
-                    if !chunk.blocks[idx].is_transpose() {
+        for x in 0..MACRO_COUNT {
+            for y in 0..MACRO_COUNT {
+                for z in 0..MACRO_COUNT {
+                    // if !chunk.get(x, y, z).is_transpose() {
+                    if !get_block(chunk, x, y, z).is_transpose() {
                         return false;
                     }
                 }
@@ -66,6 +73,7 @@ impl GreedyMesher {
         true
     }
 
+    /// check corner blocks for early exit
     #[inline]
     fn is_only_air_fast(chunk: &Chunk) -> bool {
         const IDX_1: usize = Chunk::index(0, 0, 0);
@@ -86,34 +94,32 @@ impl GreedyMesher {
             && chunk.blocks[IDX_8].is_transpose()
     }
 
-    fn build_exposed_cache(
-        chunk: &Chunk,
-        world: &World,
-    ) -> BitSet {
-        let mut cache = BitSet::new(6 * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
+    fn build_exposed_cache(chunk: &Chunk, world: &World) -> BitSet {
+        let mut cache = BitSet::new(6 * MACRO_COUNT * MACRO_COUNT * MACRO_COUNT);
         let chunk_world_base = Vector3::new(
-            chunk._pos.x * CHUNK_SIZE as i64,
-            chunk._pos.y * CHUNK_SIZE as i64,
-            chunk._pos.z * CHUNK_SIZE as i64,
+            chunk.pos.x * CHUNK_SIZE as i64,
+            chunk.pos.y * CHUNK_SIZE as i64,
+            chunk.pos.z * CHUNK_SIZE as i64,
         );
 
-        for x in 0..CHUNK_SIZE {
-            for y in 0..CHUNK_SIZE {
-                for z in 0..CHUNK_SIZE {
+        for x in 0..MACRO_COUNT {
+            for y in 0..MACRO_COUNT {
+                for z in 0..MACRO_COUNT {
                     for (dir, &normal) in DIRECTIONS.iter().enumerate() {
                         let (dx, dy, dz) = (normal.x as i64, normal.y as i64, normal.z as i64);
-                        let nx = x as i64 + dx;
-                        let ny = y as i64 + dy;
-                        let nz = z as i64 + dz;
+                        let nx = (x * SCALE) as i64 + dx;
+                        let ny = (y * SCALE) as i64 + dy;
+                        let nz = (z * SCALE) as i64 + dz;
 
                         let exposed = if nx >= 0
-                            && nx < CHUNK_SIZE as i64
+                            && nx < MACRO_COUNT as i64
                             && ny >= 0
-                            && ny < CHUNK_SIZE as i64
+                            && ny < MACRO_COUNT as i64
                             && nz >= 0
-                            && nz < CHUNK_SIZE as i64
+                            && nz < MACRO_COUNT as i64
                         {
-                            let block = chunk.get(nx as usize, ny as usize, nz as usize);
+                            // let block = chunk.get(nx as usize, ny as usize, nz as usize);
+                            let block = get_block(chunk, x, y, z);
                             block.is_transpose()
                         } else {
                             let world_pos = Vector3::new(
@@ -148,45 +154,34 @@ impl GreedyMesher {
         dir: usize,
         exposed_cache: &BitSet,
     ) -> (Vec<Vertex>, Vec<u32>) {
-        let mut vertices = Vec::with_capacity(1024);
-        let mut indices = Vec::with_capacity(1024);
+        let mut vertices = Vec::with_capacity(MACRO_COUNT * MACRO_COUNT);
+        let mut indices = Vec::with_capacity(MACRO_COUNT * MACRO_COUNT);
         let mut index_offset = 0u32;
 
-        let mut visited = BitSet::new(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
-
-        let (u_axis, v_axis, depth_axis) = if normal.x.abs() > 0.5 {
-            (
-                Vector3::new(0.0, 1.0, 0.0),
-                Vector3::new(0.0, 0.0, 1.0),
-                Vector3::new(1.0, 0.0, 0.0),
-            )
+        let mut visited = BitSet::new(MACRO_COUNT * MACRO_COUNT * MACRO_COUNT);
+        let depth_axis = normal.map(|v| v.abs());
+        let (u_axis, v_axis) = if normal.x.abs() > 0.5 {
+            (Vector3::new(0.0, 1.0, 0.0), Vector3::new(0.0, 0.0, 1.0))
         } else if normal.y.abs() > 0.5 {
-            (
-                Vector3::new(1.0, 0.0, 0.0),
-                Vector3::new(0.0, 0.0, 1.0),
-                Vector3::new(0.0, 1.0, 0.0),
-            )
+            (Vector3::new(1.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 1.0))
         } else {
-            (
-                Vector3::new(1.0, 0.0, 0.0),
-                Vector3::new(0.0, 1.0, 0.0),
-                Vector3::new(0.0, 0.0, 1.0),
-            )
+            (Vector3::new(1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0))
         };
 
-        for depth in 0..CHUNK_SIZE {
-            for u in 0..CHUNK_SIZE {
-                for v in 0..CHUNK_SIZE {
+        for depth in 0..MACRO_COUNT {
+            for u in 0..MACRO_COUNT {
+                for v in 0..MACRO_COUNT {
                     let pos = Self::get_position(u_axis, v_axis, depth_axis, depth, u, v);
                     let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
-                    if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE {
+                    if x >= MACRO_COUNT || y >= MACRO_COUNT || z >= MACRO_COUNT {
                         continue;
                     }
-                    let index = x * CHUNK_SIZE * CHUNK_SIZE + y * CHUNK_SIZE + z;
+                    let index = x * MACRO_COUNT * MACRO_COUNT + y * MACRO_COUNT + z;
                     if visited.get(index) {
                         continue;
                     }
-                    let block = chunk.get(x, y, z);
+                    // let block = chunk.get(x, y, z);
+                    let block = get_block(chunk, x, y, z);
                     if block.is_transpose() {
                         continue;
                     }
@@ -240,9 +235,9 @@ impl GreedyMesher {
                                     quad_pos.y as usize,
                                     quad_pos.z as usize,
                                 );
-                                if qx < CHUNK_SIZE && qy < CHUNK_SIZE && qz < CHUNK_SIZE {
+                                if qx < MACRO_COUNT && qy < MACRO_COUNT && qz < MACRO_COUNT {
                                     let quad_index =
-                                        qx * CHUNK_SIZE * CHUNK_SIZE + qy * CHUNK_SIZE + qz;
+                                        qx * MACRO_COUNT * MACRO_COUNT + qy * MACRO_COUNT + qz;
                                     visited.set(quad_index);
                                 }
                             }
@@ -268,29 +263,29 @@ impl GreedyMesher {
         visited: &BitSet,
         exposed_cache: &BitSet,
     ) -> (usize, usize) {
-        let max_width = CHUNK_SIZE - start_u;
-        let max_height = CHUNK_SIZE - start_v;
+        let max_width = MACRO_COUNT - start_u;
+        let max_height = MACRO_COUNT - start_v;
         let mut quad_width = 1;
         let mut quad_height = 1;
 
         // Expand horizontally
-        'outer:
-        for w in 1..max_width {
+        'outer: for w in 1..max_width {
             for h in 0..quad_height {
                 let pos =
                     Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
                 let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
 
-                if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE {
-                    break 'outer;
+                if x >= MACRO_COUNT || y >= MACRO_COUNT || z >= MACRO_COUNT {
+                    panic!(); // FIXME
                 }
 
-                let index = x * CHUNK_SIZE * CHUNK_SIZE + y * CHUNK_SIZE + z;
+                let index = x * MACRO_COUNT * MACRO_COUNT + y * MACRO_COUNT + z;
                 if visited.get(index) {
                     break 'outer;
                 }
 
-                let block = chunk.get(x, y, z);
+                // let block = chunk.get(x, y, z);
+                let block = get_block(chunk, x, y, z);
                 if block != target_block || block.is_transpose() {
                     break 'outer;
                 }
@@ -303,23 +298,23 @@ impl GreedyMesher {
         }
 
         // Expand vertically
-        'outer:
-        for h in 1..max_height {
+        'outer: for h in 1..max_height {
             for w in 0..quad_width {
                 let pos =
                     Self::get_position(u_axis, v_axis, depth_axis, depth, start_u + w, start_v + h);
                 let (x, y, z) = (pos.x as usize, pos.y as usize, pos.z as usize);
 
-                if x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE {
-                    break 'outer;
+                if x >= MACRO_COUNT || y >= MACRO_COUNT || z >= MACRO_COUNT {
+                    panic!(); // FIXME
                 }
 
-                let index = x * CHUNK_SIZE * CHUNK_SIZE + y * CHUNK_SIZE + z;
+                let index = x * MACRO_COUNT * MACRO_COUNT + y * MACRO_COUNT + z;
                 if visited.get(index) {
                     break 'outer;
                 }
 
-                let block = chunk.get(x, y, z);
+                // let block = chunk.get(x, y, z);
+                let block = get_block(chunk, x, y, z);
                 if block != target_block || block.is_transpose() {
                     break 'outer;
                 }
@@ -349,12 +344,11 @@ impl GreedyMesher {
         indices: &mut Vec<u32>,
         index_offset: &mut u32,
     ) {
-        let base_pos = Self::get_position(u_axis, v_axis, depth_axis, depth, u, v);
+        let base_pos = Self::get_position(u_axis, v_axis, depth_axis, depth * SCALE, u * SCALE, v * SCALE);
 
         // Adjust position to be the center of the quad
         let center_offset_u = (quad_width as f32 - 1.0) * 0.5;
         let center_offset_v = (quad_height as f32 - 1.0) * 0.5;
-
         let center_pos = Vector3::new(
             base_pos.x + u_axis.x * center_offset_u + v_axis.x * center_offset_v,
             base_pos.y + u_axis.y * center_offset_u + v_axis.y * center_offset_v,
@@ -396,31 +390,28 @@ impl GreedyMesher {
 }
 
 struct BitSet {
-    data: Vec<usize>,
+    data: Vec<u64>,
 }
 
 impl BitSet {
     fn new(size: usize) -> Self {
         Self {
-            data: vec![0; size.div_ceil(std::mem::size_of::<usize>() * 8)],
+            data: vec![0; size.div_ceil(64)],
         }
     }
-    
+
     #[inline(always)]
     fn get(&self, index: usize) -> bool {
-        const SIZE: usize = std::mem::size_of::<usize>() * 8;
-        (self.data[index / SIZE] & (1 << (index % SIZE))) != 0
+        (self.data[index / 64] & (1 << (index % 64))) != 0
     }
-    
+
     #[inline(always)]
     fn set(&mut self, index: usize) {
-        const SIZE: usize = std::mem::size_of::<usize>() * 8;
-        self.data[index / SIZE] |= 1 << (index % SIZE);
+        self.data[index / 64] |= 1 << (index % 64);
     }
-    
+
     #[inline(always)]
     fn set_if(&mut self, index: usize, flag: bool) {
-        const SIZE: usize = std::mem::size_of::<usize>() * 8;
-        self.data[index / SIZE] |= (flag as usize) << (index % SIZE);
+        self.data[index / 64] |= (flag as u64) << (index % 64);
     }
 }
