@@ -101,44 +101,77 @@ impl GreedyMesher {
             chunk.pos.y * CHUNK_SIZE as i64,
             chunk.pos.z * CHUNK_SIZE as i64,
         );
-
+    
         for x in 0..MACRO_COUNT {
             for y in 0..MACRO_COUNT {
                 for z in 0..MACRO_COUNT {
                     for (dir, &normal) in DIRECTIONS.iter().enumerate() {
-                        let (dx, dy, dz) = (normal.x as i64, normal.y as i64, normal.z as i64);
-                        let nx = (x * SCALE) as i64 + dx;
-                        let ny = (y * SCALE) as i64 + dy;
-                        let nz = (z * SCALE) as i64 + dz;
-
-                        let exposed = if nx >= 0
-                            && nx < MACRO_COUNT as i64
-                            && ny >= 0
-                            && ny < MACRO_COUNT as i64
-                            && nz >= 0
-                            && nz < MACRO_COUNT as i64
-                        {
-                            // let block = chunk.get(nx as usize, ny as usize, nz as usize);
-                            let block = get_block(chunk, x, y, z);
-                            block.is_transpose()
+                        let normal_axis = if normal.x != 0.0 { 0 }
+                            else if normal.y != 0.0 { 1 }
+                            else { 2 };
+                        let is_positive = normal[normal_axis] > 0.0;
+                        let other_axes = [0, 1, 2].iter().filter(|&&a| a != normal_axis).copied().collect::<Vec<_>>();
+                        let axis0 = other_axes[0];
+                        let axis1 = other_axes[1];
+                        let normal_start = if is_positive {
+                            [x, y, z][normal_axis] * SCALE + SCALE - 1
                         } else {
-                            let world_pos = Vector3::new(
-                                chunk_world_base.x + nx,
-                                chunk_world_base.y + ny,
-                                chunk_world_base.z + nz,
-                            );
-                            Self::is_face_exposed_new(world, world_pos)
+                            [x, y, z][normal_axis] * SCALE
                         };
-
+                        
+                        let mut exposed = false;
+                        for a0 in 0..SCALE {
+                            for a1 in 0..SCALE {
+                                let mut pos = [x * SCALE, y * SCALE, z * SCALE];
+                                pos[normal_axis] = normal_start;
+                                pos[axis0] += a0;
+                                pos[axis1] += a1;
+                                
+                                if Self::is_face_exposed(world, chunk, chunk_world_base, pos[0] as i64, pos[1] as i64, pos[2] as i64, normal) {
+                                    exposed = true;
+                                    break;
+                                }
+                            }
+                            if exposed { break; }
+                        }
+                        
                         cache.set_if(face_index(x, y, z, dir), exposed);
                     }
                 }
             }
         }
-
+    
         cache
     }
-
+    
+    fn is_face_exposed(
+        world: &World,
+        chunk: &Chunk,
+        chunk_world_base: Vector3<i64>,
+        px: i64,
+        py: i64,
+        pz: i64,
+        normal: Vector3<f32>,
+    ) -> bool {
+        let nx = px + normal.x as i64;
+        let ny = py + normal.y as i64;
+        let nz = pz + normal.z as i64;
+    
+        if nx >= 0 && nx < CHUNK_SIZE as i64 &&
+           ny >= 0 && ny < CHUNK_SIZE as i64 &&
+           nz >= 0 && nz < CHUNK_SIZE as i64 {
+            let block = chunk.get(nx as usize, ny as usize, nz as usize);
+            block.is_transpose()
+        } else {
+            let world_pos = Vector3::new(
+                chunk_world_base.x + nx,
+                chunk_world_base.y + ny,
+                chunk_world_base.z + nz,
+            );
+            Self::is_face_exposed_new(world, world_pos)
+        }
+    }
+    
     fn is_face_exposed_new(world: &World, pos: Vector3<i64>) -> bool {
         if let Some(chunk) = world.get_chunk(&pos) {
             let block = chunk.get_from_world_pos(pos);
@@ -344,33 +377,55 @@ impl GreedyMesher {
         indices: &mut Vec<u32>,
         index_offset: &mut u32,
     ) {
-        let base_pos = Self::get_position(u_axis, v_axis, depth_axis, depth * SCALE, u * SCALE, v * SCALE);
-
-        // Adjust position to be the center of the quad
-        let center_offset_u = (quad_width as f32 - 1.0) * 0.5;
-        let center_offset_v = (quad_height as f32 - 1.0) * 0.5;
-        let center_pos = Vector3::new(
-            base_pos.x + u_axis.x * center_offset_u + v_axis.x * center_offset_v,
-            base_pos.y + u_axis.y * center_offset_u + v_axis.y * center_offset_v,
-            base_pos.z + u_axis.z * center_offset_u + v_axis.z * center_offset_v,
+        let start_u = u * SCALE;
+        let start_v = v * SCALE;
+        let start_depth = depth * SCALE;
+        
+        let quad_width_f = (quad_width * SCALE) as f32;
+        let quad_height_f = (quad_height * SCALE) as f32;
+        
+        let base_pos = Self::get_position(
+            u_axis, v_axis, depth_axis, 
+            start_depth, start_u, start_v
         );
-
+    
+        let mut center_pos = base_pos;
+        
+        center_pos += u_axis * (quad_width_f * 0.5);
+        center_pos += v_axis * (quad_height_f * 0.5);
+        
+        if normal.x > 0.5 {
+            center_pos.x += SCALE as f32 - 0.5;
+        } else if normal.x < -0.5 {
+            center_pos.x += 0.5;
+        } else if normal.y > 0.5 {
+            center_pos.y += SCALE as f32 - 0.5;
+        } else if normal.y < -0.5 {
+            center_pos.y += 0.5;
+        } else if normal.z > 0.5 {
+            center_pos.z += SCALE as f32 - 0.5;
+        } else if normal.z < -0.5 {
+            center_pos.z += 0.5;
+        }
+    
         let (quad_vertices, quad_indices) = generate_face(
             center_pos,
             normal,
             block.id as u32,
-            quad_width as f32,
-            quad_height as f32,
+            quad_width_f,
+            quad_height_f,
         );
-        for vertex in quad_vertices {
-            vertices.push(vertex);
+        
+        let vertex_count = quad_vertices.len();
+        vertices.extend(quad_vertices);
+        
+        for index in quad_indices {
+            indices.push(index + *index_offset);
         }
-        for mut index in quad_indices {
-            index += *index_offset;
-            indices.push(index);
-        }
-        *index_offset += 4;
+        
+        *index_offset += vertex_count as u32;
     }
+    
 
     #[inline]
     const fn get_position(

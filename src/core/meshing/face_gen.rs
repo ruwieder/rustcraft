@@ -8,14 +8,14 @@ pub fn generate_face(
     width: f32,
     height: f32,
 ) -> (Vec<Vertex>, Vec<u32>) {
-    const ATLAS_WIDTH: f32 = 16.0;
-    const ATLAS_HEIGHT: f32 = 16.0;
-    const TEXTURE_SIZE: f32 = 16.0;
-    const TEXTURES_PER_ROW: u16 = (ATLAS_WIDTH / TEXTURE_SIZE) as u16;
-    const TEXTURES_PER_COL: u16 = (ATLAS_HEIGHT / TEXTURE_SIZE) as u16;
-    const TEX_SIZE_U: f32 = TEXTURE_SIZE / ATLAS_WIDTH;
-    const TEX_SIZE_V: f32 = TEXTURE_SIZE / ATLAS_HEIGHT;
-    const GAP: f32 = 0.02;
+    // const ATLAS_WIDTH: f32 = 16.0;
+    // const ATLAS_HEIGHT: f32 = 16.0;
+    // const TEXTURE_SIZE: f32 = 16.0;
+    // const TEXTURES_PER_ROW: u16 = (ATLAS_WIDTH / TEXTURE_SIZE) as u16;
+    // const TEXTURES_PER_COL: u16 = (ATLAS_HEIGHT / TEXTURE_SIZE) as u16;
+    // const TEX_SIZE_U: f32 = TEXTURE_SIZE / ATLAS_WIDTH;
+    // const TEX_SIZE_V: f32 = TEXTURE_SIZE / ATLAS_HEIGHT;
+    const GAP: f32 = 0.01;
 
     let half_width = width * 0.5 - GAP;
     let half_height = height * 0.5 - GAP;

@@ -31,7 +31,7 @@ impl TextureArray {
             }
             textures.push(img.to_rgba8());
         }
-
+        
         let mip_level_count = Self::calculate_mip_level_count(dimensions.0);
 
         let size = wgpu::Extent3d {
